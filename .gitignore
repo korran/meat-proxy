@@ -1,0 +1,5 @@
+# REAPER peak caches and backups
+peaks/
+*.reapeaks
+*.rpp-bak
+stems/
