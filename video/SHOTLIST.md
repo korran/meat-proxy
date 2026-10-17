@@ -45,12 +45,12 @@ deck start over.
 
 | Character | Design | Running details |
 |---|---|---|
-| **Kevin** | Low-poly intern: round head, dot eyes, polo shirt, lanyard with an oversized ID badge. | Badge title updates per section. Mug: `WORLD'S OKAYEST ACCOUNTABLE PARTY`. Keeps eyeing the logs folder. |
-| **The Manager** | Faceless figure whose head **is a pie chart**; laser pointer. | The pie slices quietly rearrange when he lies. The laser dot always ends up on Kevin. |
-| **The Founder** | Backlit silhouette in a fleece vest and mirrored visor; never a face (not any real person). | Always on a yacht that is one deck taller than last time. Never looks at what he taps. |
+| **Kevin** | A kid figure (short legs): printed eager face, cowlick, steak t-shirt, a lanyard so long the giant badge hangs at his knees. | Badge title updates per section. Mug: `WORLD'S OKAYEST ACCOUNTABLE PARTY`. Keeps eyeing the logs folder. |
+| **The Manager** | Suit, red tie, neat side-parted hair, a wide salesy grin; laser pointer. | The grin gets wider the worse the news. The laser dot always ends up on Kevin. |
+| **The Founder** | **The Manager, ten years later** (same singer, same guy): same grin and haircut, now silver, a mirrored visor over his eyes, fleece vest and chinos. Not any real person. | Always on a yacht that is one deck taller than last time. Never looks at what he taps. |
 | **The Anchor** | Calm news presenter, perfect helmet of hair. | Eyelids drop one notch per line of the bridge. |
 | **Agent Version Nine (v9)** | Friendly pastel rounded rectangle; eyes `^ ^`, its smile is a loading spinner. | Gets bigger every time we see it. Says "Thank you!" after anything horrible. |
-| **The Users** (second half) | Identical bean-shaped humans in hoodies and blankets, faces lit by a phone. | Never stand up if they can avoid it. Tap "Yes" to everything. Eyelids at the Anchor's last notch. |
+| **The Users** (second half) | Identical figures in grey hoodies with the hood up, half-lidded eyes, pink slippers, faces lit by a phone; usually sitting on a brick sofa. | Never stand up if they can avoid it. Tap "Yes" to everything. Eyelids at the Anchor's last notch. |
 
 **Kevin's badge title** (first half only): `INTERN` → `HEAD OF AI RISK (INTERIM)` →
 `KEVIN (SPARE)` → `KEVIN — ON DEMAND`.
@@ -100,7 +100,7 @@ view in the corner shows his speaker notes: `1. smile  2. don't mention the laws
 ### VERSE 1 — middle management · 0:10–0:40 · bars 4–18
 
 **1.01 · bars 4–6 · "OKRs to hit and a roadmap due by June"**
-The Manager (pie-chart head) at a Gantt chart. ★ Every row ends in June, including
+The Manager, grinning, at a Gantt chart. ★ Every row ends in June, including
 `Cure aging` and `Kevin onboarding (1 hr)`.
 *Pause:* OKR card `O: Be accountable. KR1: Find someone else.`
 ⟶ Gantt bars grow on the beats; the laser dot ticks between rows on each beat.
@@ -392,9 +392,9 @@ title slide from the intro, starting over.
 ⟶ The swipe is the final motion-blur move.
 
 **O.04 · bars 119–123 · (tail, music fades) — the only Kevin shot of the second half**
-★ Pull back from the phone: it's **Kevin**, on a couch under a blanket like everyone else,
-badge still on, watching the deck play from the top. The Manager's pie-chart head has been
-replaced by v9's spinner. Kevin gives the screen a sleepy thumbs-up. Fade to black on the last
+★ Pull back from the phone: it's **Kevin**, on a brick sofa like everyone else, badge still on,
+watching the deck play from the top. The Manager's head has been swapped for one of v9's screen
+heads (a toy head swap). Kevin gives the screen a sleepy thumbs-up. Fade to black on the last
 beat.
 *Post-credits sting (optional, after the audio):* Dave, holding a cactus, types `is this safe?`
 Typing indicator… and the video ends before the answer.
@@ -406,10 +406,10 @@ Typing indicator… and the video ends before the answer.
 - **Build order:** keep the Chorus 1 rig as the template (lyric band, beat pulses, blur moves)
   and add one section function at a time to `build_video.py`, each taking its bar range. Test each
   with `video/render_clip.sh` on its own range. Verse 1 first: it introduces Kevin.
-- **Assets to model (all low-poly, original):** Kevin (wave, sign, hand-reach, thrown and
-  couch poses), a User (sitting, lying, walkway-standing poses, with blanket and phone), a sofa,
-  the Manager, the Founder silhouette, the Anchor bust, v9's face, a yacht, a phone frame, a
-  server rack. Everything else is flat shapes and type.
+- **Characters** are toy figures (built in `video/style_lab.py`): legs hinge at the hip, one stud
+  per leg on the baseplate. Kevin needs wave, sign, hand-reach, thrown and sofa poses; the Users
+  need sitting, lying and walkway-standing poses. The Founder reuses the Manager's head. Props: a
+  brick sofa, a yacht, a phone frame, a server rack. Everything else is flat shapes and type.
 - **Crowds** use Geometry Nodes instancing of one mesh: Kevins for the farm (first half), Users
   for the data centre, walkways, nursery and globe (second half). Eight billion is just a
   counter and a few thousand visible copies.
