@@ -338,6 +338,9 @@ def main():
                                   ap.add_argument("--set", default="none", choices=("none", "office"),
                                                   help="perform inside a built set (before the part starts, "
                                                        "the set's intro camera runs)"),
+                                  ap.add_argument("--screen", help="video for the office TV (screen_graphics.py)"),
+                                  ap.add_argument("--screen-start", type=float, default=0.0,
+                                                  help="song time of that video's first frame"),
                                   ap.add_argument("--half", action="store_true",
                                                   help="render every other frame (30 fps) for a quicker preview")))
     P = PARTS[A.part]
@@ -662,7 +665,8 @@ def main():
         sc.collection.objects.link(place)
         place.location = spot
         root.parent = place
-        office = OS.build(sc, manager=False)
+        office = OS.build(sc, manager=False, screen_video=A.screen,
+                          screen_offset=int(round((A.screen_start - start) * fps)))
         OS.animate_terminals(office["terminals"], n, fps)
     else:
         SL.fig_baseplate(Bld, nx=16, ny=11)
@@ -773,7 +777,7 @@ def main():
     if A.half:   # play the animation twice as fast at half the frame rate: every other frame
         sc.render.fps, sc.render.frame_map_old, sc.render.frame_map_new = fps // 2, 2, 1
         sc.frame_end = n // 2
-    LS.render(sc, A.out, frames, fps, start, A.stills, A.preview)
+    LS.render(sc, A.out, frames, fps, start, A.stills, A.preview, A.lossless)
 
 
 def walk_in(kev, t0, start, n, fps, dist=0.7, dur=1.7, steps_per_s=2.6):

@@ -42,7 +42,7 @@ KEVIN = (8.5, 87.5)                       # Kevin, to the Manager's right (scree
 
 # colours
 CARPET, AISLE = "#4a5160", "#9aa1ad"
-WALL, TRIM, WALL_DARK = "#d7d9dc", "#f4f4f2", "#a7acb3"
+WALL, TRIM, WALL_DARK = "#b8bcc3", "#f4f4f2", "#a7acb3"
 DESK_TOP, DESK_LEG, CHAIR, CHAIR_SEAT = "#eef0f2", "#5a606b", "#26292f", "#2f4b7c"
 MON, KEYS = "#1b1d22", "#3a3e46"
 CEIL, LIGHT = "#c3c7cd", "#f6f8ff"
@@ -332,7 +332,22 @@ def place_figure(fn, B, loc):
 
 
 # ---------------------------------------------------------------- the set
-def build(sc, seed=11, manager=True, kevin=True):
+def movie_material(name, path, offset=0, strength=2.0):
+    """A screen playing a video (e.g. the lossless screen graphics), its frame 1 on scene frame
+    1 + offset."""
+    m = image_material(name, path, strength)
+    tex = next(n for n in m.node_tree.nodes if n.type == "TEX_IMAGE")
+    img = tex.image
+    img.source = "MOVIE"
+    iu = tex.image_user
+    iu.frame_duration = img.frame_duration
+    iu.frame_start = 1 + offset
+    iu.frame_offset = 0
+    iu.use_auto_refresh = True
+    return m
+
+
+def build(sc, seed=11, manager=True, kevin=True, screen_video=None, screen_offset=0):
     textures()
     col = sc.collection
     B = SL.Builder("fig", col)
@@ -383,7 +398,9 @@ def build(sc, seed=11, manager=True, kevin=True):
     mons = [terminal_material(k) for k in range(10)]
     for k, (centre, size) in enumerate(screens):
         picture(col, f"screen{k}", mons[rng.randrange(len(mons))], centre, size, "-y")
-    picture(col, "slide", image_material("slide", os.path.join(TEX, "slide.png"), 2.0),
+    slide = (movie_material("slide", screen_video, screen_offset) if screen_video else
+             image_material("slide", os.path.join(TEX, "slide.png"), 2.0))
+    picture(col, "slide", slide,
             ((sx0 + sx1) / 2 * P, Y1 * P - 0.052, zc), (sw, sh), "-y")
     # posters on the back wall, night city outside the windows
     for k, x in enumerate((-20, -12, 12)):
@@ -436,11 +453,13 @@ def lighting(sc, lights):
 
 
 def preview_lights(on):
-    """Ceiling-light shadows are re-rendered whenever the camera moves; they make a preview
-    about five times slower, so previews go without them."""
+    """The ceiling lights cast no shadows: they point straight down, so their shadows barely
+    show, but they're re-rendered whenever the camera moves (a preview is about five times slower
+    with them) and they overflow EEVEE's shadow memory, which drops other shadows. The key, fill,
+    rim, moon and screen lights keep theirs."""
     for ob in bpy.data.objects:
         if ob.type == "LIGHT" and ob.name.startswith("ceil"):
-            ob.data.use_shadow = not on
+            ob.data.use_shadow = False
 
 
 def setup_render(sc, res, preview):

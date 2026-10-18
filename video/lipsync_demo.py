@@ -400,6 +400,14 @@ def setup_look(sc, fps, n, res=1080, samples=16, blur_steps=4, shutter=1.0, prev
     sc.render.motion_blur_shutter = shutter
     sc.eevee.motion_blur_steps = blur_steps
     sc.eevee.motion_blur_max = int(160 * res / 1080)
+    if not preview:   # final quality: full-resolution ray tracing, smoother soft shadows (less grain)
+        rt = sc.eevee.ray_tracing_options
+        rt.resolution_scale = "1"
+        rt.use_denoise = True
+        sc.eevee.shadow_ray_count = 3
+        sc.eevee.shadow_step_count = 12
+        sc.eevee.fast_gi_ray_count = 4
+        sc.eevee.fast_gi_step_count = 12
     if preview:
         sc.render.use_motion_blur = False
         sc.eevee.taa_render_samples = 1
@@ -410,7 +418,7 @@ def setup_look(sc, fps, n, res=1080, samples=16, blur_steps=4, shutter=1.0, prev
         sc.eevee.shadow_step_count = 1
     sc.view_settings.view_transform = "AgX"
     sc.view_settings.look = "AgX - Medium High Contrast"
-    sc.view_settings.exposure = -0.65 if on_set is None else 0.0
+    sc.view_settings.exposure = -0.65 if on_set is None else -1.0   # a stop down: the office's white surfaces bloom
     sc.eevee.shadow_pool_size = "1024"
     ox, oy, oz = on_set or (0, 0, 0)
     if on_set is None:
@@ -474,7 +482,7 @@ def add_camera(sc, loc, target, lens):
     return cam
 
 
-def render(sc, out, frames, fps, start, stills=None, preview=False):
+def render(sc, out, frames, fps, start, stills=None, preview=False, lossless=False):
     """Render frames as PNGs into the folder `out` (or stills). In preview mode the animation is
     written straight to a silent H.264 video, `out` + ".mp4", instead (saving PNGs is slower
     than rendering them)."""
@@ -486,6 +494,16 @@ def render(sc, out, frames, fps, start, stills=None, preview=False):
             sc.render.filepath = f"{out}/still_{t:07.3f}_{frames[f - 1]['v']}.png"
             bpy.ops.render.render(write_still=True)
             print("STILL", t, frames[f - 1]["v"], frames[f - 1]["word"])
+    elif lossless:   # one lossless FFV1 video, out + ".mkv"
+        im = sc.render.image_settings
+        im.file_format = "FFMPEG"
+        im.color_mode = "RGB"
+        sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
+        sc.render.ffmpeg.audio_codec = "NONE"
+        sc.render.filepath = out + ".mkv"
+        sc.render.use_file_extension = False
+        bpy.ops.render.render(animation=True)
+        print("RENDER done", len(frames), "frames ->", sc.render.filepath)
     elif preview:
         im = sc.render.image_settings
         im.file_format = "FFMPEG"
@@ -510,8 +528,9 @@ def parse_args(extra=None):
     ap.add_argument("--visemes", required=True)
     ap.add_argument("--out", required=True, help="folder for rendered frames")
     ap.add_argument("--res", type=int, help="frame height in pixels (default 1080, preview 540)")
-    ap.add_argument("--samples", type=int, default=16)
+    ap.add_argument("--samples", type=int, default=32)
     ap.add_argument("--flat", action="store_true", help="flat-shaded Workbench preview (fastest)")
+    ap.add_argument("--lossless", action="store_true", help="write a lossless FFV1 video (out.mkv) instead of PNGs")
     ap.add_argument("--blur-steps", type=int, default=4)
     ap.add_argument("--shutter", type=float, default=1.0)
     ap.add_argument("--stills", help="render only these frame times (seconds, comma separated)")
