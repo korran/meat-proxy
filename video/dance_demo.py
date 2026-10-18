@@ -1,13 +1,18 @@
-"""Dance demo: the Manager grooving and gesturing through verse 1, then going big in chorus 1.
+"""Singing performances: the Manager (verse 1 + chorus 1), the Founder (verse 2 + chorus 2) or
+the Anchor (the bridge) dancing, gesturing and lip-syncing to the song. Pick one with --part (see video/dance_moves.py,
+which holds each part's song structure and lyric gestures; this file is the motion engine).
 
   tools/rpp_lyrics.py assets/audio/we_need_a_meat_proxy.rpp --format json > video/build/lyrics.json
   python3 tools/lipsync.py video/build/lyrics.json assets/audio/stems/we_need_a_meat_proxy_vocals.wav \
       --start 9.6 --end 66.6 > video/build/visemes_v1c1.json
   python3 tools/music_features.py assets/audio/stems/we_need_a_meat_proxy_drums.wav \
       assets/audio/we_need_a_meat_proxy.wav > video/build/music.json
-  blender -b --factory-startup --python video/dance_demo.py -- --visemes video/build/visemes_v1c1.json \
-      --lyrics video/build/lyrics.json --music video/build/music.json --out video/build/dance_frames
+  blender -b --factory-startup --python video/dance_demo.py -- --part v1c1 \
+      --visemes video/build/visemes_v1c1.json --lyrics video/build/lyrics.json \
+      --music video/build/music.json --out video/build/dance_frames
   (add --preview for a quick check: no motion blur, 540p, written straight to dance_frames.mp4)
+  For --part v2c2, make the visemes with --start 66.4 --end 129.8; for --part bridge, with
+  --start 129.4 --end 148.6.
 
 How it stays musical and alive:
   - Every joint is a spring chasing a target pose, so moves have weight: they lag a little,
@@ -28,6 +33,8 @@ How it stays musical and alive:
     kick and the right hand comes down on every snare, whatever it is doing (beat times from the REAPER tempo map,
     hits from the drum stem).
   - Section energy: chill in the verse, nearly still for the spoken line, big in the chorus.
+  - Sedation (the Anchor): springs get lazier, the beat moves her less, her head droops and her
+    eyelids drop a notch per line until they close.
 """
 import bisect
 import json
@@ -43,11 +50,11 @@ from mathutils import Matrix, Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lipsync_demo as LS  # noqa: E402
 import style_lab as SL  # noqa: E402
+from dance_moves import PARTS, R, TAU, Lf, Words, arm, noise, smooth  # noqa: E402
 
 THIGH, SHIN = 0.10, 0.14            # adult leg: hip to knee, knee to floor
 LEG = THIGH + SHIN
-TAU = math.pi * 2
-R, Lf = -1, 1                       # his right arm is on the -x side (screen left)
+P = PARTS["v1c1"]                   # the part being performed (set from --part in main)
 
 # spring per channel: (frequency Hz, damping ratio). Lower frequency = heavier, lazier.
 SPRINGS = {
@@ -62,23 +69,6 @@ ARM_CH = [c for c in SPRINGS if c[:2] in ("sx", "sa", "sz", "el")]
 LEG_CH = ("knee0", "knee1", "hipf0", "hipf1")
 
 
-def smooth(x):
-    x = min(1.0, max(0.0, x))
-    return x * x * (3 - 2 * x)
-
-
-def noise(t, seed):
-    """Smooth, slow pseudo-random wobble in about [-1, 1]."""
-    return (0.5 * math.sin(1.31 * t + seed) + 0.3 * math.sin(2.87 * t + 2.1 * seed)
-            + 0.2 * math.sin(0.61 * t + 3.7 * seed))
-
-
-def arm(s, x, ab=0.1, z=0.0, el=-0.5):
-    """Arm target. x: raise (negative = forward/up), ab: out to the side, z: swing a raised arm
-    outward (+) or across the body (-), el: elbow bend (negative)."""
-    return {f"sx{s}": x, f"sab{s}": ab, f"sz{s}": z, f"el{s}": el}
-
-
 class Beats:
     def __init__(self, beats):
         self.b = sorted(beats, key=lambda b: b["t"])
@@ -91,29 +81,24 @@ class Beats:
         return k + (t - t0) / (t1 - t0), (t - t0) / (t1 - t0), self.b[k]["bar"], self.b[k]["beat"] - 1, t1 - t0
 
 
-# ---------------------------------------------------------------- song structure
-def intensity(t):
-    """How hard he dances: chill verse, nearly still for the spoken line, big chorus."""
-    pts = [(0, 0.45), (36.6, 0.45), (37.2, 0.22), (40.3, 0.2), (41.4, 1.0), (63.3, 1.0), (63.8, 0.55),
-           (65.4, 0.6), (65.6, 1.0), (99, 1.0)]
-    for (t0, a), (t1, b) in zip(pts, pts[1:]):
-        if t0 <= t < t1:
-            return a + (b - a) * smooth((t - t0) / (t1 - t0))
-    return 1.0
-
-
-CHORUS_T = (40.9, 66.2)
+# ---------------------------------------------------------------- grooves
 VERSE_VARIANTS = ["sway", "bounce", "step", "lean"]
 CHORUS_VARIANTS = ["stomp", "twist", "hop", "bang"]
 FACING = [0.0, -0.32, 0.22, -0.12, 0.35, -0.25, 0.1]
 
 
-def phrase_plan(first_bar, last_bar):
-    """A groove variant and a facing direction per two-bar phrase, never the same twice in a row."""
+def phrase_plan(B):
+    """A groove variant and a facing direction per two-bar phrase, never the same twice in a row
+    (chorus grooves in the chorus, verse grooves elsewhere)."""
     rng = random.Random(7)
+    bar_t = {}
+    for b in B.b:
+        bar_t.setdefault(b["bar"], b["t"])
     plan, prev, prevf = {}, None, None
-    for p in range(first_bar // 2, last_bar // 2 + 2):
-        opts = CHORUS_VARIANTS if p >= 9 else VERSE_VARIANTS
+    for p in sorted({bar // 2 for bar in bar_t}):
+        mid = bar_t.get(2 * p + 1, bar_t.get(2 * p, 0.0) + 2.2)   # the phrase's second bar
+        first = bar_t.get(2 * p, mid - 2.2) + 0.3
+        opts = CHORUS_VARIANTS if P.in_chorus(mid) or P.in_chorus(first) else VERSE_VARIANTS
         v = rng.choice([o for o in opts if o != prev])
         f = rng.choice([x for x in FACING if x != prevf])
         plan[p] = (v, f)
@@ -234,219 +219,8 @@ def clear_arm(s, x, ab, z, el):
     return ab + 1.5, el * 0.25
 
 
-# ---------------------------------------------------------------- lyric gestures
-class Words:
-    def __init__(self, lyrics):
-        self.w = [w for line in lyrics["lines"] for w in line["words"]]
-
-    def find(self, text, after=0.0):
-        key = re.sub(r"[^a-z]", "", text.lower())
-        for w in self.w:
-            if w["start"] >= after - 0.01 and re.sub(r"[^a-z]", "", w["text"].lower()) == key:
-                return w
-        raise KeyError(text)
-
-
-class Gesture:
-    """Targets for some channels between start and end, faded in and out. `fn(t, u)` returns
-    (targets, offsets): targets replace the groove, offsets add to it. u = 0..1 through it."""
-
-    def __init__(self, start, end, fn, attack=0.22, release=0.4):
-        self.start, self.end, self.fn, self.attack, self.release = start, end, fn, attack, release
-
-    def weight(self, t):
-        if t < self.start or t > self.end + self.release:
-            return 0.0
-        if t < self.start + self.attack:
-            return smooth((t - self.start) / self.attack)
-        if t > self.end:
-            return 1 - smooth((t - self.end) / self.release)
-        return 1.0
-
-
-def link(G):
-    """Gestures close together flow straight into each other instead of dropping to idle between."""
-    G.sort(key=lambda g: g.start)
-    for g, nxt in zip(G, G[1:]):
-        gap = nxt.start - g.end
-        if gap < 0.8:
-            g.release = max(g.release, gap + nxt.attack + 0.05)
-    return G
-
-
-def osc(t, hz, phase=0.0):
-    return math.sin(TAU * (hz * t + phase))
-
-
-def choreography(W, B):
-    """Gestures for verse 1 and chorus 1, tied to the words they act out. Poses open out to the
-    sides so they read from the front (arms pointing straight at the camera look stubby)."""
-    G = []
-
-    def word(text, after=0.0):
-        return W.find(text, after)
-
-    def at(text, after, fn, pre=0.2, hold=0.2, until=None, attack=0.22, release=0.4):
-        w = word(text, after)
-        end = word(until, w["start"])["end"] if until else w["end"]
-        G.append(Gesture(w["start"] - pre, end + hold, lambda t, u, w=w: fn(t, u, w), attack, release))
-        return w
-
-    def beat_pulse(t, width=0.18):
-        """1 right on each beat, falling off quickly (for pumps and chops)."""
-        k, ph, *_ = B.at(t)
-        d = min(ph, 1 - ph)
-        return math.exp(-(d / width) ** 2)
-
-    def per_beat(t):
-        return 1 / B.at(t)[4]
-
-    # --- verse 1, line 1: "I've got OKRs to hit and a roadmap due by June"
-    def okrs(t, u, w):  # counts the letters off on his fingers, a flick for each
-        n = min(2, int(u * 3))
-        flick = math.exp(-((u * 3 - n - 0.2) / 0.2) ** 2)
-        return ({**arm(R, -0.95, 0.4, 0.15, -1.25 + 0.3 * flick), **arm(Lf, -0.75, 0.35, 0.1, -1.4)},
-                {"hx": 0.1, "hz": -0.08})
-    at("OKRs", 10.5, okrs, hold=0.1)
-    at("roadmap", 12.0, lambda t, u, w: ({**arm(R, -1.2, 0.35, -0.2 + 1.2 * smooth(u), -0.25)},
-                                         {"hz": -0.2 + 0.45 * smooth(u)}), hold=0.1)
-    at("June", 13.2, lambda t, u, w: ({**arm(R, -2.2, 0.6, 0.1, -0.15)}, {"hx": -0.1, "hy": 0.08}),
-       hold=0.1, release=0.6)
-
-    # line 2: "The agent ships a quarter's work by Tuesday afternoon"
-    at("ships", 15.3, lambda t, u, w: ({**arm(R, -1.15, 0.45, 0.3, -1.3 + 1.05 * smooth(u * 1.6)),
-                                        **arm(Lf, -1.15, 0.45, 0.3, -1.3 + 1.05 * smooth(u * 1.6))},
-                                       {"lean": 0.08}), hold=0.0)
-    at("quarter's", 15.9, lambda t, u, w: ({**arm(R, -0.95, 0.85, 0.25, -0.35), **arm(Lf, -0.95, 0.85, 0.25, -0.35)},
-                                           {"hx": -0.08, "lean": -0.05}), until="work", hold=0.0)
-    at("Tuesday", 17.0, lambda t, u, w: ({**arm(Lf, -0.95, 0.4, -0.15, -1.45)},
-                                         {"hx": 0.25, "hz": 0.3, "hy": 0.05}), until="afternoon", hold=0.15)
-
-    # line 3: "I've never read a line of it, I just paste it in the deck"
-    at("never", 19.2, lambda t, u, w: ({**arm(R, -0.95, 0.45, -0.2 + 1.0 * smooth(u * 1.5), -0.6)},
-                                       {"hy": 0.08 * osc(t, 3.0), "hz": 0.12 * osc(t, 2.5)}), until="read", hold=0.0)
-    at("paste", 21.4, lambda t, u, w: ({**arm(R, -1.7 + 0.9 * smooth(u * 3), 0.4, 0.15, -1.0 + 0.5 * smooth(u * 3))},
-                                       {"lean": 0.1 * smooth(u * 3), "hx": 0.1}), pre=0.28, hold=0.25)
-
-    # line 4: 'And the last guy who asked "Is this safe?" got a handshake and a check'
-    at("Is", 24.2, lambda t, u, w: ({**arm(R, -0.55, 0.65, 0.35, -1.15), **arm(Lf, -0.55, 0.65, 0.35, -1.15)},
-                                    {"hy": 0.2, "lean": -0.06, "hx": -0.08}), until="safe", hold=0.1)
-    at("handshake", 25.8, lambda t, u, w: ({**arm(R, -0.95, 0.35, 0.3, -0.6 + 0.22 * osc(t, per_beat(t)))},
-                                           {"lean": 0.05, "hz": -0.1}), until="check", hold=0.1)
-
-    # line 5: "So I made our intern Kevin the new Head of AI Risk"
-    at("intern", 28.1, lambda t, u, w: ({**arm(Lf, -1.2, 0.65, 0.85, -0.08)}, {"hz": 0.5, "hx": 0.05}),
-       until="Kevin", hold=0.1)
-    at("Head", 29.6, lambda t, u, w: ({**arm(R, -1.95, 0.35 + 0.45 * smooth(u * 1.3), 0.2, -0.2),
-                                       **arm(Lf, -1.95, 0.35 + 0.45 * smooth(u * 1.3), 0.2, -0.2)},
-                                      {"hx": -0.1, "lean": -0.06}), until="Risk", hold=0.1, release=0.5)
-
-    # line 6: "With a budget of ten dollars and a tenure just as brisk"
-    at("ten", 32.6, lambda t, u, w: ({**arm(R, -0.95, 0.4, 0.15, -1.5 + 0.08 * osc(t, 7.0))},
-                                     {"hx": 0.06, "hy": -0.1}), until="dollars", hold=0.05)
-    at("brisk", 35.2, lambda t, u, w: ({**arm(R, -1.35 - 0.25 * smooth(u * 3), 0.85, 0.5, -1.6)},
-                                       {"hz": -0.25, "hy": 0.08}), pre=0.15, hold=0.25)
-
-    # spoken: "Great growth opportunity, Kevin. Please don't open the logs."
-    at("growth", 37.0, lambda t, u, w: ({**arm(Lf, -0.65, 0.6, 0.6, -0.3 - 0.25 * max(0.0, osc(t, 2.2)))},
-                                        {"hz": 0.45, "hx": 0.18, "roll": 0.04}), until="Kevin", hold=0.0)
-    at("Please", 38.9, lambda t, u, w: ({**arm(R, -1.45, 0.7, 0.2 + 0.18 * osc(t, 4.0), -1.35)},
-                                        {"hy": 0.06 * osc(t, 2.0), "hx": 0.06}), until="logs", hold=0.15)
-
-    # --- chorus 1
-    def need_meat_proxy(after):
-        # "We NEED a MEAT PROX-Y": arms up in a V on "need", then punches out on the hits
-        at("need", after, lambda t, u, w: ({**arm(R, -2.85, 0.45, 0.0, -0.08), **arm(Lf, -2.85, 0.45, 0.0, -0.08)},
-                                           {"hx": -0.15, "lean": -0.08}), pre=0.22, hold=0.0)
-        m = word("meat", after)
-        p = word("proxy", after)
-        hits = [(m["start"], R), (p["start"], Lf), ((p["start"] + p["end"]) / 2, R)]
-
-        def punches(t, u, w):
-            out = {}
-            for s in (R, Lf):
-                ext = max((math.exp(-((t - h - 0.06) / 0.1) ** 2) for h, hs in hits if hs == s), default=0.0)
-                out.update(arm(s, -0.95 - 0.4 * ext, 0.45, 0.3, -1.6 + 1.45 * ext))
-            return out, {"lean": 0.08, "hx": 0.1}
-        G.append(Gesture(m["start"] - 0.18, p["end"], lambda t, u: punches(t, u, None)))
-
-    need_meat_proxy(40.5)
-    at("body", 42.3, lambda t, u, w: ({**arm(R, -0.4, 0.65, 0.0, -0.3), **arm(Lf, -0.4, 0.65, 0.0, -0.3)},
-                                      {"hx": 0.1, "lean": -0.05}), hold=0.0)
-    at("bill", 43.3, lambda t, u, w: ({**arm(R, -0.95, 0.4, 0.15, -1.5 + 0.1 * osc(t, 7.0)),
-                                       **arm(Lf, -0.8, 0.4, 0.0, -1.3)}, {"hy": -0.12}), hold=0.1)
-    at("name", 44.4, lambda t, u, w: ({**arm(R, -1.05, 0.4, 0.1 + 0.2 * osc(t, 4.5), -1.0 + 0.15 * osc(t, 4.5, 0.25)),
-                                       **arm(Lf, -0.8, 0.4, -0.05, -1.35)}, {"hx": 0.18}), until="merge", hold=0.0)
-    # "a pulse that's holding still": palms out, "hold it"... then everything freezes
-    at("pulse", 46.6, lambda t, u, w: ({**arm(R, -1.1, 0.5, 0.3, -1.45), **arm(Lf, -1.1, 0.5, 0.3, -1.45)},
-                                       {"hx": 0.05}), until="still", hold=0.0, release=0.15)
-
-    # "the bot's got no assets": deliberately robotic arms, snapping between poses on the 8ths
-    def robot(t, u, w):
-        k, ph, *_ = B.at(t)
-        e = int(k * 2) % 4
-        down_fwd = (-0.1, 0.3, 0.0, -1.57)    # upper arm down, forearm straight out front
-        side = (-0.1, 1.45, 0.0, -0.05)       # whole arm straight out to the side
-        up = (-2.95, 0.35, 0.0, -0.05)       # straight up
-        poses = [(down_fwd, side), (side, down_fwd), (down_fwd, down_fwd), (side, up)]
-        a, b = poses[e]
-        return ({**arm(R, *a), **arm(Lf, *b)}, {"hz": 0.3 * (1 if e % 2 else -1)})
-    at("bot's", 48.7, robot, until="assets", hold=0.0, attack=0.06)
-    # "no knees to break": bends down and slaps his knees on the beat
-    at("knees", 51.2, lambda t, u, w: ({**arm(R, -0.5, 0.3, 0.0, -0.35 + 0.3 * beat_pulse(t)),
-                                        **arm(Lf, -0.5, 0.3, 0.0, -0.35 + 0.3 * beat_pulse(t)),
-                                        "lean": 0.38, "knee0": 0.75, "knee1": 0.75}, {"hx": 0.15}),
-       pre=0.35, until="break", hold=0.0)
-    # "hire a little Kevin": palm down at kid height, out to his side
-    at("little", 53.8, lambda t, u, w: ({**arm(Lf, -0.45, 0.65, 0.6, -0.6)}, {"hz": 0.4, "hx": 0.22}),
-       until="Kevin", hold=0.05)
-    # "easy to forsake": a toss over the shoulder, then he spins away on the long note
-    at("easy", 55.4, lambda t, u, w: ({**arm(R, -0.6 - 2.0 * smooth(u * 2.2 - 0.5), 0.55, 0.2, -0.35)},
-                                      {"hz": -0.25}), until="to", hold=0.0)
-    # "put him in the loop": finger twirling a loop overhead, on the beat
-    at("loop", 58.4, lambda t, u, w: ({**arm(R, -2.85 + 0.12 * osc(t, per_beat(t)), 0.3,
-                                             0.25 * osc(t, per_beat(t), 0.25), -0.2)},
-                                      {"hx": -0.12}), pre=0.4, hold=0.0)
-    # "put his name on every line": karate chops down on the beats
-    at("name", 59.6, lambda t, u, w: ({**arm(R, -1.6 + 0.8 * beat_pulse(t, 0.22), 0.45, 0.2, -0.75),
-                                       **arm(Lf, -0.8, 0.45, 0.0, -1.35)}, {"hx": 0.12 * beat_pulse(t)}),
-       until="line", hold=0.0)
-    need_meat_proxy(62.0)
-    # "and the paperwork says SIGN": holds the paper up... then a big signature, ending on the hit
-    at("paperwork", 64.1, lambda t, u, w: ({**arm(R, -1.0, 0.45, 0.05, -1.2), **arm(Lf, -1.0, 0.45, 0.05, -1.2)},
-                                           {"hx": 0.18}), until="says", hold=0.0)
-
-    def sign(t, u, w):
-        sw = smooth(u * 1.4)
-        # the pen swings out to the side first, then up into a V, so it never crosses his face
-        return ({**arm(R, -1.1 - 1.7 * sw, 0.4 + 0.1 * sw, -0.3 + 0.8 * smooth(u * 3) + 0.15 * osc(t, 6.0) * (1 - sw),
-                       -1.0 + 0.92 * sw),
-                 **arm(Lf, -0.3, 0.55, 0.0, -1.7)}, {"hx": -0.15 * sw, "lean": -0.08 * sw})
-    at("sign", 65.3, sign, pre=0.12, hold=0.6, release=0.6)
-    return link(G)
-
-
-# ---------------------------------------------------------------- whole-body events (no springs)
-def jumps(W):
-    """(takeoff, landing, height) for jumps: into the chorus, and onto the final 'sign' hit."""
-    return [(41.02, 41.40, 0.075), (65.12, 65.52, 0.085)]
-
-
-def spins(W):
-    """(start, end, turns): a full spin on the long 'forsake'."""
-    w = W.find("forsake", 56.0)
-    return [(w["start"] + 0.35, w["start"] + 1.15, 1.0)]
-
-
-def freezes(W):
-    """Time ranges where he freezes dead still ('holding still')."""
-    w = W.find("holding", 47.0)
-    return [(w["start"] + 0.05, W.find("still", 47.0)["end"] - 0.02)]
-
-
 # ---------------------------------------------------------------- layers timed exactly to the music
 # These are added after the springs, so their timing is exact to the frame.
-DRUM_T = (41.3, 63.4)  # kick stomps and air drums: the chorus, up to the break before "sign"
 
 
 def head_sway(t, B):
@@ -471,7 +245,7 @@ def stomps(hits, J, times, fps):
     last, foot, impacts = [-9.0, -9.0], 1, []
     for h in hits:
         t = h["t"]
-        if h["kind"] != "kick" or not DRUM_T[0] <= t <= DRUM_T[1]:
+        if h["kind"] != "kick" or not P.drums[0] <= t <= P.drums[1]:
             continue
         if any(a - 0.3 <= t <= b + 0.15 for a, b, _ in J):  # not while jumping
             continue
@@ -536,8 +310,11 @@ def spring_track(target, f, z, fps, impulses=None, forces=None, stiff=None, sub=
 
 # ---------------------------------------------------------------- build and bake
 def main():
+    global P
     A = LS.parse_args(lambda ap: (ap.add_argument("--lyrics", required=True),
-                                  ap.add_argument("--music", required=True)))
+                                  ap.add_argument("--music", required=True),
+                                  ap.add_argument("--part", default="v1c1", choices=sorted(PARTS))))
+    P = PARTS[A.part]
     D = json.load(open(A.visemes))
     Ly = json.load(open(A.lyrics))
     M = json.load(open(A.music))
@@ -547,9 +324,9 @@ def main():
     end = times[-1]
     B = Beats([b for b in Ly["beats"] if start - 3.0 <= b["t"] <= end + 3.0])
     W = Words(Ly)
-    G = choreography(W, B)
-    J, SP, FZ = jumps(W), spins(W), freezes(W)
-    plan = phrase_plan(int(B.b[0]["bar"]), int(B.b[-1]["bar"]))
+    G = P.gestures(W, B)
+    J, SP, FZ = P.jumps, P.spins(W), P.freezes(W)
+    plan = phrase_plan(B)
     mf = M["frames"]
 
     def mfeat(key, t):
@@ -565,26 +342,29 @@ def main():
     for i, t in enumerate(times):
         k, ph, bar, bi, blen = B.at(t)
         pos = bi + ph
-        I = intensity(t)
+        I = P.intensity(t)
         pidx = bar // 2
         v, facing = plan.get(pidx, ("sway", 0.0))
-        if CHORUS_T[0] <= t < CHORUS_T[1] and v in VERSE_VARIANTS:
+        if P.in_chorus(t) and v in VERSE_VARIANTS:
             v = CHORUS_VARIANTS[pidx % 4]
-        elif not (CHORUS_T[0] <= t < CHORUS_T[1]) and v in CHORUS_VARIANTS:
+        elif not P.in_chorus(t) and v in CHORUS_VARIANTS:
             v = VERSE_VARIANTS[pidx % 4]
+        facing *= 1 - 0.8 * P.calm            # a composed performer barely turns away
         p = groove_pose(t, B, v, facing, I)
         # crossfade into the next phrase's groove over the last beat of the phrase
         into = (bar % 2) * 4 + pos
         if into > 7.0:
             v2, f2 = plan.get(pidx + 1, (v, facing))
-            in_ch = CHORUS_T[0] <= t + blen < CHORUS_T[1]
+            in_ch = P.in_chorus(t + blen)
             if in_ch and v2 in VERSE_VARIANTS:
                 v2 = CHORUS_VARIANTS[(pidx + 1) % 4]
             elif not in_ch and v2 in CHORUS_VARIANTS:
                 v2 = VERSE_VARIANTS[(pidx + 1) % 4]
-            q = groove_pose(t, B, v2, f2, I)
+            q = groove_pose(t, B, v2, f2 * (1 - 0.8 * P.calm), I)
             u = smooth(into - 7.0)
             p = {c: p[c] * (1 - u) + q[c] * u for c in p}
+        for c in ("rx", "roll", "cyaw"):       # a composed performer sways less
+            p[c] *= 1 - 0.5 * P.calm
         # lyric gestures on top
         for g in G:
             w = g.weight(t)
@@ -595,9 +375,10 @@ def main():
                 lag = 0.07
                 tl, _ = g.fn(t - lag, (t - lag - g.start) / max(1e-3, g.end - g.start))
                 wl = g.weight(t - lag)
-                for c in (f"sx{Lf}", f"sab{Lf}", f"sz{Lf}", f"el{Lf}"):
+                left = (f"sx{Lf}", f"sab{Lf}", f"sz{Lf}", f"el{Lf}")
+                for c in left:
                     p[c] = p[c] * (1 - wl) + tl[c] * wl
-                tg = {c: v for c, v in tg.items() if not c.endswith(f"{Lf}") or c.startswith(("knee", "hip"))}
+                tg = {c: v for c, v in tg.items() if c not in left}
             for c, val in tg.items():
                 p[c] = p[c] * (1 - w) + val * w
             for c, val in off.items():
@@ -616,12 +397,13 @@ def main():
         for c in T:
             T[c][i] = p[c]
 
-    # stiffen the arms while the robot gesture runs (find it by its timing)
-    rb = W.find("bot's", 48.7)
-    ra = W.find("assets", rb["start"])
-    for i, t in enumerate(times):
-        if rb["start"] - 0.1 <= t <= ra["end"]:
-            stiff[i] = 2.6
+    # stiffen the arms while the robot gesture runs
+    for a, b in P.stiff(W):
+        for i, t in enumerate(times):
+            if a <= t <= b:
+                stiff[i] = 2.6
+    lazy = [(1 - 0.35 * P.sedated(t)) * (1 - 0.35 * P.calm) for t in times]   # sedated/calm: slower joints
+    stiff = [a * b for a, b in zip(stiff, lazy)]
 
     # 2. impulses from the music (velocity kicks, applied a little early so the peak lands on time)
     imp = {c: {} for c in SPRINGS}
@@ -629,16 +411,17 @@ def main():
     def kick(c, t, dv, lead=0.05):
         f = int(round((t - lead - start) * fps))
         if 0 <= f < n:
-            imp[c][f] = imp[c].get(f, 0.0) + dv * (1 if c in LEG_CH else 1 - frozen(t))
+            scale = (1 if c in LEG_CH else 1 - frozen(t)) * (1 - 0.6 * P.sedated(t)) * (1 - 0.75 * P.calm)
+            imp[c][f] = imp[c].get(f, 0.0) + dv * scale
 
     for b in B.b:
         t = b["t"]
         if not (start - 0.2 <= t <= end):
             continue
-        I = intensity(t)
+        I = P.intensity(t)
         strong = b["beat"] in (1, 3)             # half-time: the head goes down on 1 and 3
         drum = max((h["strength"] for h in M["hits"] if abs(h["t"] - t) < 0.05), default=0.0)
-        in_ch = CHORUS_T[0] <= t < CHORUS_T[1]
+        in_ch = P.in_chorus(t)
         if strong:
             kick("hx", t, (3.2 + 9.0 * (I - 0.45) / 0.55 if in_ch else 3.4) * (0.75 + 0.25 * min(1.0, drum)), 0.06)
             kick("knee0", t, 1.6 + 2.6 * I)
@@ -653,7 +436,7 @@ def main():
         t = h["t"]
         if not (start <= t <= end):
             continue
-        I = intensity(t)
+        I = P.intensity(t)
         on_beat = any(abs(b["t"] - t) < 0.06 for b in B.b)
         s = h["strength"] * I
         if h["kind"] == "kick" and not on_beat:   # syncopated kicks: extra bounce
@@ -669,7 +452,7 @@ def main():
         t = times[i]
         hv = mfeat("hat", t)
         if hv > hat_th and hv >= mfeat("hat", t - 1 / fps) and hv > mfeat("hat", t + 1 / fps):
-            kick("croll", t, 0.5 * min(1.0, hv) * (1 if int(t * 8) % 2 else -1) * (1.2 - intensity(t)), 0.03)
+            kick("croll", t, 0.5 * min(1.0, hv) * (1 if int(t * 8) % 2 else -1) * (1.2 - P.intensity(t)), 0.03)
 
     # 3. jumps and spins are scripted (no spring on the flight itself)
     rz_extra = [0.0] * n
@@ -703,9 +486,9 @@ def main():
         if c in ARM_CH or c in ("hx",):
             continue
         f, z = SPRINGS[c]
-        S[c] = spring_track(T[c], f, z, fps, imp[c])
+        S[c] = spring_track(T[c], f, z, fps, imp[c], stiff=lazy)
 
-    lift, stomp_hits = stomps(M["hits"], J, times, fps)
+    lift, stomp_hits = stomps(M["hits"], J, times, fps) if P.legs else ([[0.0] * n] * 2, [])
     for leg in (0, 1):
         for i in range(n):
             e = lift[leg][i]
@@ -720,7 +503,8 @@ def main():
             ex.append(THIGH * math.cos(h) + SHIN * math.cos(h + kn + 2 * hf))
         return max(ex)
 
-    root_z = [-(LEG - extents(i)) + S["rz"][i] + rz_extra[i] for i in range(n)]
+    # (a figure in a skirt has no knees to bend, so she stays planted)
+    root_z = [(-(LEG - extents(i)) if P.legs else 0.0) + S["rz"][i] + rz_extra[i] for i in range(n)]
 
     def accel(sig, limit):
         """Acceleration of a motion track, smoothed and limited (hard landings shouldn't whip the
@@ -748,7 +532,7 @@ def main():
             force = [0.4 * a + 25.0 * b for a, b in zip(alean, az)]
         S[c] = spring_track(T[c], f, z, fps, imp[c], force, stiff)
     f, z = SPRINGS["hx"]
-    snares = [h["t"] for h in M["hits"] if h["kind"] == "snare" and DRUM_T[0] <= h["t"] <= DRUM_T[1]]
+    snares = [h["t"] for h in M["hits"] if h["kind"] == "snare" and P.drums[0] <= h["t"] <= P.drums[1]]
     # around each hit, hold the hand's underlying motion steady, so the strike sets the low point
     # (otherwise the body's own drop on beat 3 keeps swinging the arm down after the hit)
     for c in (f"sx{R}", f"el{R}"):
@@ -782,9 +566,10 @@ def main():
     for s in (R, Lf):  # joint limits
         S[f"el{s}"] = [max(-2.5, min(0.05, v)) for v in S[f"el{s}"]]
         S[f"sab{s}"] = [max(-0.05, v) for v in S[f"sab{s}"]]
-    S["hx"] = spring_track(T["hx"], f, z, fps, imp["hx"], [40.0 * a - 0.3 * b for a, b in zip(az, alean)])
+    S["hx"] = spring_track(T["hx"], f, z, fps, imp["hx"], [40.0 * a - 0.3 * b for a, b in zip(az, alean)], lazy)
     for i, t in enumerate(times):  # a small nod into each snare hit
         S["hx"][i] += 0.05 * max(0.0, snare_hit(next((a for a, b in FZ if a <= t <= b + 0.1), t), snares))
+        S["hx"][i] += 0.15 * P.sedated(t)       # sedated: the head droops
     S["hx"] = [0.55 * math.tanh(v / 0.55) for v in S["hx"]]  # neck limit
 
     # 5. build the figure and bake
@@ -792,7 +577,7 @@ def main():
     for ob in list(bpy.data.objects):
         bpy.data.objects.remove(ob)
     Bld = SL.Builder("fig", sc.collection)
-    top, head, mouths, eyes, blink = LS.singing_manager(Bld, sc)
+    top, head, mouths, eyes, blink = LS.singing_figure(Bld, sc, P.figure)
     legs = Bld.legs[-2:]
     shoulders = {s: find_empty(f"shoulder{s}") for s in (R, Lf)}
     for sh in shoulders.values():
@@ -823,11 +608,14 @@ def main():
     SL.fig_baseplate(Bld, nx=16, ny=11)
 
     LS.animate_mouths(mouths, frames)
-    LS.animate_blinks(eyes, blink, n, fps)
+    if P.lids:
+        LS.animate_lids(eyes, blink, Bld.lids, P.lids(W), n, fps, start)
+    else:
+        LS.animate_blinks(eyes, blink, n, fps)
     cam = LS.add_camera(sc, (0.7, -2.9, 0.66), (0, 0, 0.45), 50)
     cam_bump = spring_track([0.0] * n, 3.0, 0.5, fps,
-                            {int(round((b["t"] - start) * fps)): 0.25 * intensity(b["t"]) ** 2
-                             for b in B.b if b["beat"] in (1, 3) and CHORUS_T[0] <= b["t"] < CHORUS_T[1]})
+                            {int(round((b["t"] - start) * fps)): 0.25 * P.intensity(b["t"]) ** 2
+                             for b in B.b if b["beat"] in (1, 3) and P.in_chorus(b["t"])})
 
     level = 0.0
     for i, fr in enumerate(frames):
@@ -849,16 +637,17 @@ def main():
             shoulders[s].keyframe_insert("rotation_euler", frame=f)
             elbows[s].rotation_euler.x = min(0.05, S[f"el{s}"][i])
             elbows[s].keyframe_insert("rotation_euler", frame=f)
-        sway = head_sway(t, B) * (1 - smooth((t - 40.4) / 0.6))
+        sway = head_sway(t, B) * (1 - smooth((t - P.sway_end) / 0.6)) * (1 - 0.6 * P.sedated(t)) * (1 - 0.5 * P.calm)
         head.rotation_euler = (S["hx"][i] + 0.05 * level, S["hy"][i] + 0.075 * sway, S["hz"][i] + 0.05 * sway)
         head.keyframe_insert("rotation_euler", frame=f)
         # camera: gentle drift in the verse; in the chorus a slow orbit and a bump on 1 and 3
         tt = t - start
         ang = 0.25 + 0.05 * math.sin(tt * 0.3)
         dist = 2.9 - 0.25 * smooth(tt / 25.0)
-        if CHORUS_T[0] <= t:
-            ang += 0.35 * math.sin(TAU * (t - 40.9) / 26.0) * smooth((t - 40.9) / 2.0)
-            dist -= 0.15 * smooth((t - 40.9) / 3.0)
+        c0 = P.chorus[0]
+        if c0 <= t:
+            ang += 0.35 * math.sin(TAU * (t - c0) / 26.0) * smooth((t - c0) / 2.0)
+            dist -= 0.15 * smooth((t - c0) / 3.0) * (1 - smooth((t - P.chorus[1]) / 2.0))
         dist -= cam_bump[i]
         cam.location = (dist * math.sin(ang), -dist * math.cos(ang), 0.66 + 0.04 * math.sin(tt * 0.4))
         SL.aim(cam, (S["rx"][i] * 0.5, 0, 0.45 + 0.4 * (root_z[i] + 0.0)))
@@ -876,4 +665,5 @@ def find_empty(prefix):
     return next(ob for ob in bpy.data.objects if ob.type == "EMPTY" and ob.name.split(".")[0] == prefix)
 
 
-main()
+if __name__ == "__main__":
+    main()

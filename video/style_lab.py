@@ -830,7 +830,8 @@ def on_cyl(x, z, off=0.0015, r=0.1):
     return (x, -math.sqrt(r * r - x * x) - off, z)
 
 
-def face_eyes(B, c, cyl, lids=False, lashes=False, glint=True):
+def face_eyes(B, c, cyl, lids=False, lashes=False, glint=True, dz=0.0):
+    c = c + dz   # dz moves the eyes up (+) or down
     for s in (-1, 1):
         B.decal(f"eye{s}", "ellipse", 0.036 * s, c + 0.008, 0.0135, 0.019, "eye", cyl, 0.0008)
         if glint:
@@ -888,7 +889,7 @@ def manager_head(B, top, hair, visor=False, mouth=True):
     B.capsule("part", (-0.05, -0.06, c + 0.098), (0.06, -0.03, c + 0.11), 0.02, hair, kind="glossy")
 
 
-def build_founder(B):
+def build_founder(B, mouth=True):
     top = fig_torso(B, fig_adult_legs(B, "#c9b38a", "#f4f4f0"), "#8a8f99")
     z0 = top - FIG["torso_h"]
     hw0, hw1 = half_width(z0, z0) - 0.004, half_width(z0, top) - 0.004
@@ -902,13 +903,16 @@ def build_founder(B):
     _, hand = fig_arms(B, top, "#8a8f99", "fig_skin", poses=("down", "phone"))
     held_slab(B, hand, "phone", (0.07, 0.009, 0.125), "#15161b", screen="#bfe3ff",
               look_at=(0, -0.1, top + 0.13))  # at his face
-    manager_head(B, top, "#b9bcc4", visor=True)  # the Manager, ten years later
+    manager_head(B, top, "#b9bcc4", visor=True, mouth=mouth)  # the Manager, ten years later
     (lh, lk), (rh, rk) = B.legs[-2], B.legs[-1]
     lh.rotation_euler.x, lk.rotation_euler.x = 0.3, 0.45   # back leg: heel lifting
     rh.rotation_euler.x, rk.rotation_euler.x = -0.4, 0.15  # front leg: reaching forward
 
 
-def build_anchor(B):
+ANCHOR_EYES_DZ = 0.012   # her eyes sit a little higher (the fringe makes a low face look sleepy)
+
+
+def build_anchor(B, mouth=True):
     top = fig_torso(B, fig_skirt(B, "#22305e", "#15161b"), "#c8323c")
     print_poly(B, "blouse", [(-0.05, top - 0.003), (0.05, top - 0.003), (0, top - 0.12)], "white")
     for s in (-1, 1):
@@ -918,11 +922,12 @@ def build_anchor(B):
     _, hand = fig_arms(B, top, "#c8323c", "fig_skin", poses=("down", "phone"))
     held_slab(B, hand, "cuecards", (0.07, 0.01, 0.1), "white", look_at=(0, -0.1, top + 0.13))
     c, cyl = fig_head(B, top, "fig_skin")
-    face_eyes(B, c, cyl, lashes=True)
+    face_eyes(B, c, cyl, lashes=True, dz=ANCHOR_EYES_DZ)
     for s in (-1, 1):
         B.decal(f"cheek{s}", "ellipse", 0.06 * s, c - 0.022, 0.016, 0.01, "cheek", cyl, 0.0008)
         B.sphere(f"earring{s}", (0.1 * s, -0.01, c - 0.05), (0.012, 0.012, 0.012), "#e8c15a", kind="chrome")
-    B.decal("lips", "ellipse", 0, c - 0.03, 0.02, 0.008, "#c8323c", cyl, 0.0012)
+    if mouth:  # leave it off when animated mouth shapes are added instead (video/lipsync_demo.py)
+        B.decal("lips", "ellipse", 0, c - 0.03, 0.02, 0.008, "#c8323c", cyl, 0.0012)
     # big glossy helmet hair: covers the top, sides and back, frames the face
     B.sphere("hair", (0, 0.035, c + 0.06), (0.135, 0.13, 0.11), "#e2b85c", kind="glossy")
     for s in (-1, 1):
