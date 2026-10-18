@@ -201,6 +201,7 @@ def key(ob, t, loc=None, scale=None, rot=None):
 
 def pop_in(ob, t, dur=0.22, over=1.12, frm=0.0):
     """Scale up from nothing with a little overshoot."""
+    dur = max(dur, 3.0 / FPS)            # (keys closer than a frame apart would overwrite each other)
     key(ob, t - 0.001 if t > T0 else t, scale=frm)
     key(ob, t + dur * 0.65, scale=over)
     key(ob, t + dur, scale=1.0)
@@ -224,7 +225,7 @@ def grow_x(ob, t0, t1, a=0.0, b=1.0):
 def hide_until(ob, t):
     """Kept at zero scale until t (for objects that should simply appear)."""
     key(ob, T0, scale=0.0)
-    key(ob, t - 0.001, scale=0.0)
+    key(ob, t - 1.0 / FPS, scale=0.0)    # a frame early, so a key at t doesn't overwrite it
 
 
 def ease_all():
@@ -343,6 +344,27 @@ def split_line(words):
 
 STYLES = ["poster", "ragged", "tilt", "mixed"]
 TOP, BOTTOM, MAXW = -0.35, -3.85, 13.6   # the lyric area (lower part of the screen)
+LX = 0.0                                 # its centre (x)
+REG = dict(cx=0.0, w=W, split=False)     # the free area for a line's graphic (wide screens)
+
+
+def set_region(side):
+    """Wide screen (the yacht's LED wall): where the lyrics and the line's graphic go, given where
+    the performer stands in front of the wall (side: -0.75 left .. 0 centre .. 0.75 right, as in
+    yacht_set.DOLLY). Lyrics take a band across the top of the free area, the graphic the rest."""
+    global TOP, BOTTOM, MAXW, LX, REG
+    half = W / 2
+    TOP, BOTTOM = 4.3, 2.6                        # (above his head, from the stage shot's camera)
+    if side == 0:   # centred: lyrics across the whole top, graphics either side of him
+        LX, MAXW = 0.0, W - 1.4
+        REG = dict(cx=0.0, w=W - 0.8, split=True)
+        return
+    sg = 1 if side > 0 else -1
+    edge = side * half - sg * 2.5                 # his near edge (he's about 5 units wide, arms out)
+    far = -sg * (half - 0.35)
+    lo, hi = sorted((edge, far))
+    LX, MAXW = (lo + hi) / 2, hi - lo - 0.5
+    REG = dict(cx=(lo + hi) / 2, w=hi - lo, split=False)
 
 
 def phrase(words, t_in, t_out, style, spoken=False, idx=0):
@@ -424,7 +446,7 @@ def phrase(words, t_in, t_out, style, spoken=False, idx=0):
             y -= gap_y * s_ * 0.7
         base = y - c * s_                               # this row's baseline
         rw = (sum(i["wd"] for i in r) + gap * (len(r) - 1)) * s_
-        x = -rw / 2 if style in ("poster", "tilt") else -MAXW / 2
+        x = LX - rw / 2 if style in ("poster", "tilt") else LX - MAXW / 2
         for it in r:
             wd = it["wd"] * s_
             it["piv"].location = (x + wd / 2, base + it["cap"] * s_ / 2, 0)
@@ -961,26 +983,36 @@ END = 999.0
 LYRICS_START = 0.0
 
 
-def build(lyrics, start, end):
+def build(lyrics, start, end, table=None, wide=False):
+    """table: [(first words of a line, graphic function, options)]; options may give 'side' (the
+    performer's place in front of a wide screen, see set_region), 'skip' (words the graphic sets
+    itself) and 'spoken'."""
     global T0, END, LYRICS_START, COL
     T0, END = start, end
+    table = table or LINES
     sc = bpy.context.scene
     for ob in list(bpy.data.objects):
         bpy.data.objects.remove(ob)
     COL = sc.collection
-    lines = [ln for ln in lyrics["lines"] if start - 1 <= ln["start"] < end]
+    lines = [ln for ln in lyrics["lines"] if start - (0.2 if wide else 1) <= ln["start"] < end]
     beats = [b for b in lyrics["beats"] if start - 1 <= b["t"] <= end + 1]
     LYRICS_START = lines[0]["start"] if lines else end
     background()
-    chrome(lines, beats)
-    if start < LYRICS_START:
+    if wide:
+        import screen_v2
+        screen_v2.chrome(lines, beats)
+    else:
+        chrome(lines, beats)
+    if start < LYRICS_START and not wide:
         title(beats)
     for k, ln in enumerate(lines):
         nxt = lines[k + 1]["start"] if k + 1 < len(lines) else end + 1
         t_out = min(nxt - 0.3, ln["end"] + 1.2)
-        spec = next(((fn, opt) for pre, fn, opt in LINES
+        spec = next(((fn, opt) for pre, fn, opt in table
                      if norm(ln["text"]).startswith(norm(pre))), (None, {}))
         fn, opt = spec
+        if "side" in opt:
+            set_region(opt["side"])
         words = ln["words"][opt.get("skip", 0):]
         lyric_phrases(ln, t_out, words=words, spoken=opt.get("spoken", False))
         if fn:
@@ -996,7 +1028,7 @@ def build(lyrics, start, end):
 
 def setup(sc, res, n, preview):
     sc.render.engine = "BLENDER_EEVEE_NEXT"
-    sc.render.resolution_y, sc.render.resolution_x = res, res * 16 // 9
+    sc.render.resolution_y, sc.render.resolution_x = res, int(round(res * W / H))
     sc.render.fps = FPS
     sc.frame_start, sc.frame_end = 1, n
     sc.eevee.taa_render_samples = 1 if preview else 8
@@ -1021,11 +1053,21 @@ def main():
     ap.add_argument("--stills", help="comma-separated song times to render as PNGs instead")
     ap.add_argument("--final", action="store_true", help="more samples")
     ap.add_argument("--noblur", action="store_true", help="no motion blur (much quicker, for review)")
+    ap.add_argument("--part", default="v1c1", choices=("v1c1", "v2c2"),
+                    help="v2c2: the Founder's verse and chorus, for the yacht's 2:1 LED wall")
     ap.add_argument("--lossless", action="store_true",
                     help="write lossless FFV1 video (out.mkv), for use as the TV's texture in the 3D scene")
     A = ap.parse_args(argv)
     sc = bpy.context.scene
-    build(json.load(open(A.lyrics)), A.start, A.end)
+    if A.part == "v2c2":
+        global W
+        W = 18.0                                        # 2:1
+        sys.modules.setdefault("screen_graphics", sys.modules[__name__])   # one copy of this module
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import screen_v2
+        build(json.load(open(A.lyrics)), A.start, A.end, screen_v2.LINES, wide=True)
+    else:
+        build(json.load(open(A.lyrics)), A.start, A.end)
     n = int(round((A.end - A.start) * FPS))
     setup(sc, A.res, n, not A.final)
     sc.render.use_motion_blur = not A.noblur

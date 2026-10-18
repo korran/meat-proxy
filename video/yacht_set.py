@@ -336,7 +336,7 @@ def build_yacht(K):
     for y in (-42, -35):          # along the port side, out of the stage shot
         lounger(K, -16, y)
         lounger(K, -13, y)
-    bx, by = 13.5, -57.0          # out by the starboard rail, clear of the stage shot's dolly
+    bx, by = 13.5, -37.0          # forward by the starboard rail, clear of the stage shot's dolly
     K.round(bx, by, 0, 2, 7, CHROME, studs=False, kind="chrome")          # bar table
     K.round(bx - 1, by - 1, 7, 4, 1, WHITE, studs=False)
     K.round(bx + 0.5, by + 0.5, 8, 1, 2.5, CHROME, studs=False, kind="chrome")    # champagne bucket
@@ -503,15 +503,26 @@ def setup_render(sc, res, preview):
 # The stage shot: him head to toe (like the Manager's in the office), from further back with a
 # long lens. The camera is low, looking up: the top of the LED wall at the top of the frame, his
 # shoes at the bottom. (centre, distance, height, lens)
-STAGE_CENTRE = (FOUNDER[0] * P, FOUNDER[1] * P + 0.8, 0.49)   # between him and the wall
-STAGE_VIEW = (STAGE_CENTRE, 5.5, 0.18, 95)      # back, low and long: the wall looms behind him
+STAGE_CENTRE = (FOUNDER[0] * P, FOUNDER[1] * P + 0.8, 0.486)   # between him and the wall
+STAGE_VIEW = (STAGE_CENTRE, 5.5, 0.75, 88)      # back and long, at his eye level: his head stays below
+                                                # the lyrics along the top of the wall
+# ...and low, and closer. When he's dollied off to one side the lyrics only
+# run along the other side of the wall, so the camera can come down and he looms larger.
+STAGE_LOW = (0.3, 0.47, 78, 4.6)       # (camera height, aim height, lens, distance): closer, so he looms
+LOWER_TIME = 4.0      # seconds to sink to the low shot (it rises again with the dolly back to centre)
 
 
-def stage_pose(side=0.0, dist=None, dz=0.0):
+def stage_pose(side=0.0, dist=None, dz=0.0, low=0.0):
     """Camera (location, target, lens) for the stage shot. The camera dollies sideways while
     staying aimed at the middle of the wall, so the wall holds still in frame and he slides across
-    it: side is where he appears on the wall, -1 its left edge .. 0 centre .. 1 its right edge."""
+    it: side is where he appears on the wall, -1 its left edge .. 0 centre .. 1 its right edge.
+    low: 0 the eye-level shot .. 1 the low one (STAGE_LOW)."""
     (cx, cy, cz), d0, h, lens = STAGE_VIEW
+    if dist is not None:              # (a push in from the beat bumps, relative to the shot's distance)
+        dist = dist - d0
+    h, cz, lens, d0 = (a + (b - a) * low for a, b in zip((h, cz, lens, d0), STAGE_LOW))
+    if dist is not None:
+        dist = d0 + dist
     d = d0 if dist is None else dist
     cam_y = cy - d
     ls, lf = SY * P - cam_y, FOUNDER[1] * P - cam_y     # camera to the wall, and to him
@@ -538,7 +549,7 @@ FACE_TURN = 0.7    # after each dolly lands, he turns to face the camera over th
 
 def face_yaw(side):
     """The turn (radians, about z) that has him facing the camera when it's dollied to `side`."""
-    loc, _, _ = stage_pose(side)
+    loc, _, _ = stage_pose(side, low=1.0 if side else 0.0)    # (off to a side, the camera is low and close)
     return math.atan2(loc[0] - FOUNDER[0] * P, FOUNDER[1] * P - loc[1])
 
 
@@ -549,6 +560,33 @@ def facing_at(t, moves=None):
     for t0, side in moves:
         u = min(1.0, max(0.0, (t - t0 - DOLLY_MOVE) / FACE_TURN))
         a += (face_yaw(side) - a) * u * u * u * (u * (6 * u - 15) + 10)
+    return a
+
+
+def moves_from_lyrics(lyrics, lead=1.5):
+    """The dolly moves that go with the LED wall's graphics (screen_v2.LINES gives each line the
+    Founder's side): a move starting `lead` s before each line whose side differs from the last."""
+    import screen_graphics as SG
+    import screen_v2
+    moves, side = [], 0.0
+    for ln in lyrics["lines"]:
+        spec = next((opt for pre, _, opt in screen_v2.LINES if SG.norm(ln["text"]).startswith(SG.norm(pre))), None)
+        if spec is None or spec.get("side", side) == side:
+            continue
+        side = spec["side"]
+        moves.append((max(FLY_END_T, ln["start"] - lead), side))
+    return moves
+
+
+def low_at(t, moves=None):
+    """How far the camera has sunk to the low shot at song time t: slowly down after each move off
+    to a side, back up with each move to the centre (so it's up before full-width lyrics)."""
+    moves = DOLLY if moves is None else moves
+    a = 0.0
+    for t0, side in moves:
+        target = 1.0 if side else 0.0
+        u = min(1.0, max(0.0, (t - t0) / (LOWER_TIME if target > a else DOLLY_MOVE)))
+        a += (target - a) * u * u * u * (u * (6 * u - 15) + 10)
     return a
 
 
@@ -569,6 +607,7 @@ FLY = [
     (7.0, (-0.8, -11.6, 0.4), (0.05, -5.5, 0.5), 60),
     (11.0, *stage_pose()),
 ]
+FLY_END_T = 66.4 + 11.0   # song time the opening zoom lands (verse 2 starts at 66.4)
 LED_RISE = (63.8, 9.5)    # (song time it starts, seconds it takes): the hatch is open and the wall
                           # just emerging when verse 2 starts (66.4); fully up by about 73
 
@@ -584,8 +623,8 @@ STILLS = [
     ("stage_down", *stage_pose(), 0.0),
     ("stage_rising", *stage_pose(), 0.55),
     ("stage_up", *stage_pose(), 1.0),
-    ("stage_left", *stage_pose(-0.75), 1.0),    # dollied over: him toward the wall's left end
-    ("stage_right", *stage_pose(0.75), 1.0),     # ...and its right
+    ("stage_left", *stage_pose(-0.75, low=1.0), 1.0),    # dollied over (and down): him toward the left end
+    ("stage_right", *stage_pose(0.75, low=1.0), 1.0),     # ...and its right
     ("side", (24.0, -6.0, 3.2), (0.0, 0.5, 1.0), 35, 1.0),
     ("aerial", (-9.0, -17.0, 8.5), (0.0, -2.5, 0.5), 30, 1.0),
 ]

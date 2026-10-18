@@ -384,7 +384,7 @@ def v2c2_gestures(W, B):
     at("couple", 116.3, lambda t, u, w: ({**arm(R, -0.55 - 0.3 * smooth(u), 0.2, -0.2, -0.6)},
                                          {"hz": 0.3, "lean": 0.08}), until="senators", hold=0.0)
     at("signed", 118.9, sign, pre=0.15, hold=0.3, release=0.5)
-    need_meat_proxy(119.9, need="neat")  # (sic: the lyric sheet says "neat")
+    need_meat_proxy(119.9)
     at("body", 122.1, lambda t, u, w: ({**arm(R, -0.4, 0.65, 0.0, -0.3), **arm(Lf, -0.4, 0.65, 0.0, -0.3)},
                                        {"hx": 0.1, "lean": -0.05}), hold=0.0)
     at("not", 122.9, lambda t, u, w: ({**arm(R, -1.45, 0.7, 0.2 + 0.18 * osc(t, 4.0), -1.35)},

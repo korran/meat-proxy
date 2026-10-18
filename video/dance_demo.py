@@ -677,6 +677,7 @@ def main():
         root.parent = place
         yacht = YS.build(sc, founder=False, screen_video=A.screen,
                          screen_offset=int(round((A.screen_start - start) * fps)))
+        YS.DOLLY[:] = YS.moves_from_lyrics(Ly)     # the camera follows the LED wall's layout
         YS.animate_led(yacht, *YS.LED_RISE, start, n, fps)
         YS.animate_sea(yacht["sea"], n, fps)
     else:
@@ -746,7 +747,7 @@ def main():
             dz = 0.02 * math.sin(tt * 0.4)            # to move him across it (YS.DOLLY)
             settle = smooth((tt - YS.FLY[-1][0]) / 3.0)
             loc, tgt, lens = YS.stage_pose(YS.side_at(t), YS.STAGE_VIEW[1] - 0.15 * cam_bump[i] * settle,
-                                           dz * settle)
+                                           dz * settle, YS.low_at(t))
             if tt < YS.FLY[-1][0]:
                 loc, tgt, lens = YS.fly_pose(tt)
             cam.location = loc
