@@ -385,9 +385,11 @@ def animate_head(head, frames, fps, extra=None):
         head.keyframe_insert("rotation_euler", frame=i + 1)
 
 
-def setup_look(sc, fps, n, res=1080, samples=16, blur_steps=4, shutter=1.0, preview=False):
+def setup_look(sc, fps, n, res=1080, samples=16, blur_steps=4, shutter=1.0, preview=False, on_set=None):
     """Same materials, lights and grading as the cast lineup. preview: as fast as possible (no
-    motion blur, one sample, cheaper shadows, no ray tracing)."""
+    motion blur, one sample, cheaper shadows, no ray tracing). on_set: (x, y, z) of the performer
+    inside a built set, which has its own world and floor: only the key, fill and rim lights are
+    added, around that spot and dimmer."""
     sc.render.engine = "BLENDER_EEVEE_NEXT"
     sc.render.resolution_y = res
     sc.render.resolution_x = res * 16 // 9
@@ -406,29 +408,59 @@ def setup_look(sc, fps, n, res=1080, samples=16, blur_steps=4, shutter=1.0, prev
         sc.eevee.shadow_resolution_scale = 0.5
         sc.eevee.shadow_ray_count = 1
         sc.eevee.shadow_step_count = 1
-    sc.world = sc.world or bpy.data.worlds.new("World")
-    sc.world.use_nodes = True
-    bg = sc.world.node_tree.nodes["Background"]
-    bg.inputs[0].default_value = (*SL.srgb(SL.PAL["floor"]), 1)
-    bg.inputs[1].default_value = 0.35
     sc.view_settings.view_transform = "AgX"
     sc.view_settings.look = "AgX - Medium High Contrast"
-    sc.view_settings.exposure = -0.65
-    bpy.ops.mesh.primitive_plane_add(size=40, location=(0, 0, -0.04))
-    bpy.context.object.data.materials.append(SL.material("fig", "floor", "floor", "matte"))
-    for name, loc, energy, size, color, target in (
-        ("key", (-2.5, -3.2, 3.2), 900, 3.0, (1.0, 0.95, 0.9), (0, 0, 0.5)),
-        ("fill", (3.0, -2.8, 1.4), 320, 4.0, (0.75, 0.85, 1.0), (0, 0, 0.5)),
-        ("rim", (0.0, 2.2, 2.4), 420, 4.0, (1.0, 0.8, 0.6), (0, 0, 0.6)),
-    ):
+    sc.view_settings.exposure = -0.65 if on_set is None else 0.0
+    sc.eevee.shadow_pool_size = "1024"
+    ox, oy, oz = on_set or (0, 0, 0)
+    if on_set is None:
+        sc.world = sc.world or bpy.data.worlds.new("World")
+        sc.world.use_nodes = True
+        bg = sc.world.node_tree.nodes["Background"]
+        bg.inputs[0].default_value = (*SL.srgb(SL.PAL["floor"]), 1)
+        bg.inputs[1].default_value = 0.35
+        bpy.ops.mesh.primitive_plane_add(size=40, location=(0, 0, -0.04))
+        bpy.context.object.data.materials.append(SL.material("fig", "floor", "floor", "matte"))
+    rig = ((("key", (-2.5, -3.2, 3.2), 900, 3.0, (1.0, 0.95, 0.9), (0, 0, 0.5)),
+            ("fill", (3.0, -2.8, 1.4), 320, 4.0, (0.75, 0.85, 1.0), (0, 0, 0.5)),
+            ("rim", (0.0, 2.2, 2.4), 420, 4.0, (1.0, 0.8, 0.6), (0, 0, 0.6))) if on_set is None else
+           # in a set: closer, under the ceiling and in front of the wall behind
+           (("key", (-1.0, -1.5, 1.2), 70, 1.2, (1.0, 0.95, 0.9), (0, 0, 0.5)),
+            ("fill", (1.3, -1.3, 0.8), 25, 1.5, (0.75, 0.85, 1.0), (0, 0, 0.5)),
+            ("rim", (0.3, 0.55, 1.25), 30, 0.8, (1.0, 0.8, 0.6), (0, 0, 0.6))))
+    for name, loc, energy, size, color, target in rig:
         ld = bpy.data.lights.new(name, "AREA")
         ld.energy, ld.size, ld.color = energy, size, color
         lo = bpy.data.objects.new(name, ld)
         sc.collection.objects.link(lo)
-        lo.location = loc
-        SL.aim(lo, target)
+        lo.location = (loc[0] + ox, loc[1] + oy, loc[2] + oz)
+        SL.aim(lo, (target[0] + ox, target[1] + oy, target[2] + oz))
     sc.render.image_settings.file_format = "PNG"
     sc.render.image_settings.color_mode = "RGB"
+
+
+def flat_look(sc):
+    """A much faster preview for checking framing and timing: the Workbench engine, flat
+    colours with simple studio shading, images on the screens (they don't scroll), no lighting."""
+    sc.render.engine = "BLENDER_WORKBENCH"
+    sh = sc.display.shading
+    sh.light = "STUDIO"
+    sh.color_type = "TEXTURE"
+    sh.show_shadows = False
+    sh.show_cavity = False
+    sc.display.render_aa = "OFF"
+    sc.view_settings.view_transform = "Standard"
+    for m in bpy.data.materials:   # give every material its colour in the viewport too
+        if not m.use_nodes:
+            continue
+        for n in m.node_tree.nodes:
+            if n.type == "BSDF_PRINCIPLED":
+                m.diffuse_color = n.inputs["Base Color"].default_value
+                break
+            if n.type == "EMISSION":
+                c = n.inputs["Color"].default_value
+                m.diffuse_color = (min(1, c[0] * 1.5), min(1, c[1] * 1.5), min(1, c[2] * 1.5), 1)
+                break
 
 
 def add_camera(sc, loc, target, lens):
@@ -479,6 +511,7 @@ def parse_args(extra=None):
     ap.add_argument("--out", required=True, help="folder for rendered frames")
     ap.add_argument("--res", type=int, help="frame height in pixels (default 1080, preview 540)")
     ap.add_argument("--samples", type=int, default=16)
+    ap.add_argument("--flat", action="store_true", help="flat-shaded Workbench preview (fastest)")
     ap.add_argument("--blur-steps", type=int, default=4)
     ap.add_argument("--shutter", type=float, default=1.0)
     ap.add_argument("--stills", help="render only these frame times (seconds, comma separated)")

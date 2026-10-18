@@ -37,7 +37,8 @@ ROWS = [12 + 8 * r for r in range(7)]     # each row: chair zone, then the desk 
 DESK_W, DESK_D = 6, 3
 STAGE = (-18, 18, 76, 92)                 # x0, x1, y0, y1
 SCREEN_X = (-7, 3)                        # the big screen's span on the front wall (studs)
-MANAGER = (6.5, 86.5)                     # where the Manager stands (stud coords of his centre)
+MANAGER = (4.5, 87.5)                     # where the Manager stands (stud coords of his centre)
+KEVIN = (8.5, 87.5)                       # Kevin, to the Manager's right (screen right)
 
 # colours
 CARPET, AISLE = "#4a5160", "#9aa1ad"
@@ -331,7 +332,7 @@ def place_figure(fn, B, loc):
 
 
 # ---------------------------------------------------------------- the set
-def build(sc, seed=11):
+def build(sc, seed=11, manager=True, kevin=True):
     textures()
     col = sc.collection
     B = SL.Builder("fig", col)
@@ -362,7 +363,7 @@ def build(sc, seed=11):
             K.round(x + 1 - s / 2, y + 1 - s / 2, dz, s, 5, "#3f9c4a" if k % 2 else "#56b85e", studs=False)
     # the big screen on the front wall: black bezel, the slide, a little soundbar
     sx0, sx1 = SCREEN_X
-    zc, sw = 0.83, (sx1 - sx0) * P
+    zc, sw = 0.7, (sx1 - sx0) * P            # low on the wall: its bottom at about his waist
     sh = sw * 9 / 16
     K.box(sx0 * P - 0.03, Y1 * P - 0.05, zc - sh / 2 - 0.03, sx1 * P + 0.03, Y1 * P, zc + sh / 2 + 0.03, MON)
     K.box((sx0 + 3) * P, Y1 * P - 0.07, zc - sh / 2 - 0.08, (sx1 - 3) * P, Y1 * P, zc - sh / 2 - 0.05, MON)
@@ -392,9 +393,18 @@ def build(sc, seed=11):
     for x, f in ((X0 * P - 3.0, "+x"), (X1 * P + 3.0, "-x")):
         picture(col, f"city{f}", city, (x, Y1 * P / 2, 1.0), (24.0, 6.0), f)
     # the Manager by the screen, on the stage
-    mgr = place_figure(SL.build_manager, B, (MANAGER[0] * P, MANAGER[1] * P, 2 * PL))
+    mgr = place_figure(SL.build_manager, B, manager_spot()) if manager else None
+    kev = None
+    if kevin:   # Kevin waits on the stage, turned a little toward the Manager
+        kev = place_figure(SL.build_kevin_fig, B, (KEVIN[0] * P, KEVIN[1] * P, 2 * PL))
+        kev.rotation_euler.z = -0.35
     lighting(sc, lights)
-    return {"room": room, "manager": mgr, "screen": (((sx0 + sx1) / 2 * P, Y1 * P, zc)), "terminals": mons}
+    return {"room": room, "manager": mgr, "screen": (((sx0 + sx1) / 2 * P, Y1 * P, zc)), "terminals": mons, "kevin": kev}
+
+
+def manager_spot():
+    """Where the Manager stands: on the stage, beside the screen (world units)."""
+    return (MANAGER[0] * P, MANAGER[1] * P, 2 * PL)
 
 
 def lighting(sc, lights):
@@ -425,6 +435,14 @@ def lighting(sc, lights):
     SL.aim(lo, (0, Y1 * P - 3, 0.3))
 
 
+def preview_lights(on):
+    """Ceiling-light shadows are re-rendered whenever the camera moves; they make a preview
+    about five times slower, so previews go without them."""
+    for ob in bpy.data.objects:
+        if ob.type == "LIGHT" and ob.name.startswith("ceil"):
+            ob.data.use_shadow = not on
+
+
 def setup_render(sc, res, preview):
     sc.render.engine = "BLENDER_EEVEE_NEXT"
     sc.render.resolution_y = res
@@ -433,6 +451,7 @@ def setup_render(sc, res, preview):
     sc.eevee.use_raytracing = not preview
     sc.eevee.use_fast_gi = not preview
     sc.eevee.shadow_pool_size = "1024"
+    preview_lights(preview)
     sc.view_settings.view_transform = "AgX"
     sc.view_settings.look = "AgX - Medium High Contrast"
     sc.view_settings.exposure = 0.0
@@ -460,40 +479,58 @@ STILLS = [
 ]
 
 
+# The stage shot: in close, looking at a point between the big screen and the Manager, so the
+# screen fills much of the frame (it will carry lyrics and graphics). Kevin is out of frame.
+# (centre, distance, height, lens)
+STAGE_VIEW = ((0.15, 12.25, 0.58), 2.95, 0.55, 52)   # frames the screen's edges closely, and his feet
+# The Kevin shot: dollied over to the right, looking back past Kevin at the Manager, with the
+# screen behind the Manager. (location, target, lens)
+KEVIN_SHOT = ((1.0, 9.5, 0.63), (0.47, 11.94, 0.55), 49)
+
+
+def stage_pose(ang=0.0, dist=None, dz=0.0):
+    """Camera (location, target, lens) for the stage shot, swung by `ang` around its centre."""
+    (cx, cy, cz), d0, h, lens = STAGE_VIEW
+    d = d0 if dist is None else dist
+    return (cx + d * math.sin(ang), cy - d * math.cos(ang), h + dz), (cx, cy, cz), lens
+
+
 # intro fly-through: (time s, camera location, look-at target, lens). From the back door, low
-# down the centre aisle between the glowing monitors, ending on the screen and the Manager.
+# down the centre aisle between the glowing monitors, a slow glide that is still settling onto
+# the stage shot as the verse starts (the performance continues from there without a cut).
 FLY = [
     (0.0, (0.0, 0.3, 0.78), (0.0, 6.0, 0.5), 22),
-    (2.4, (0.05, 2.9, 0.52), (0.0, 9.0, 0.45), 24),
-    (4.8, (-0.3, 5.6, 0.40), (0.25, 10.5, 0.5), 24),
-    (7.2, (0.25, 8.3, 0.52), (0.3, 12.4, 0.68), 26),
-    (9.6, (0.45, 10.0, 0.66), (0.2, 12.5, 0.76), 30),
+    (3.5, (0.05, 2.9, 0.52), (0.0, 9.0, 0.45), 24),
+    (7.0, (-0.3, 5.6, 0.40), (0.25, 10.5, 0.5), 26),
+    (10.5, (0.1, 7.9, 0.58), (0.05, 12.2, 0.6), 34),
+    (14.0, *stage_pose()),
 ]
 
 
-def fly(sc, fps, seconds):
-    """Keyframe the fly-through camera on every frame (Catmull-Rom through the FLY points, eased
-    so it glides in and settles at the end)."""
-    cam = camera(sc, FLY[0][1], FLY[0][2], FLY[0][3])
-    pts = FLY
-    T = pts[-1][0]
+def fly_pose(t):
+    """Camera (location, look-at target, lens) at time t of the fly-through: Catmull-Rom through
+    the FLY points, eased so it glides in and settles at the end."""
+    pts, T = FLY, FLY[-1][0]
 
     def cr(p0, p1, p2, p3, t):
         return [0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t ** 3)
                 for a, b, c, d in zip(p0, p1, p2, p3)]
 
+    u = min(1.0, max(0.0, t / T))
+    u = u * u * (3 - 2 * u)       # eases out of the start and gently to a stop on the stage shot
+    t = u * T
+    k = max(0, min(len(pts) - 2, max(i for i in range(len(pts)) if pts[i][0] <= t)))
+    s = (t - pts[k][0]) / (pts[k + 1][0] - pts[k][0])
+    q = [pts[max(0, k - 1)], pts[k], pts[k + 1], pts[min(len(pts) - 1, k + 2)]]
+    return cr(*[p[1] for p in q], s), cr(*[p[2] for p in q], s), cr(*[(p[3],) for p in q], s)[0]
+
+
+def fly(sc, fps, seconds):
+    """Keyframe the fly-through camera on every frame."""
+    cam = camera(sc, FLY[0][1], FLY[0][2], FLY[0][3])
     n = int(round(seconds * fps))
     for f in range(n + 1):
-        u = min(1.0, f / fps / seconds)
-        u = u * u * (3 - 2 * u) * 0.35 + u * 0.65            # gentle ease in and out
-        t = u * T
-        k = max(0, min(len(pts) - 2, max(i for i in range(len(pts)) if pts[i][0] <= t)))
-        t0, t1 = pts[k][0], pts[k + 1][0]
-        s = (t - t0) / (t1 - t0)
-        q = [pts[max(0, k - 1)], pts[k], pts[k + 1], pts[min(len(pts) - 1, k + 2)]]
-        loc = cr(*[p[1] for p in q], s)
-        tgt = cr(*[p[2] for p in q], s)
-        lens = cr(*[(p[3],) for p in q], s)[0]
+        loc, tgt, lens = fly_pose(f / fps)
         cam.location = loc
         SL.aim(cam, tgt)
         cam.data.lens = lens

@@ -108,10 +108,16 @@ class Kit:
             me.materials.append(m)
         ob = bpy.data.objects.new(name, me)
         (collection or self.B.col).objects.link(ob)
-        if bevel:
+        if bevel:   # baked into the mesh once (a live modifier is recomputed on every frame)
             b = ob.modifiers.new("bevel", "BEVEL")
             b.width, b.segments = bevel, 2
             b.limit_method = "ANGLE"
             b.harden_normals = False
+            dg = bpy.context.evaluated_depsgraph_get()
+            baked = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+            ob.modifiers.clear()
+            old, ob.data = ob.data, baked
+            bpy.data.meshes.remove(old)
+            baked.name = name
         self.geo = {}
         return ob

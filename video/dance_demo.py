@@ -238,6 +238,12 @@ def head_sway(t, B):
     return side * (1 - 2 * go + settle)
 
 
+def smoother(x):
+    """Smootherstep: eases in and out more gently than smooth() (no jolt at either end)."""
+    x = min(1.0, max(0.0, x))
+    return x * x * x * (x * (6 * x - 15) + 10)
+
+
 def head_bang(t, B):
     """Rock-singer head-bang: the head lifts a little before each beat, snaps down exactly on
     it, and springs back. 1 = fully down. Harder on beats 1 and 3."""
@@ -328,7 +334,12 @@ def main():
     global P, THIGH, SHIN, LEG
     A = LS.parse_args(lambda ap: (ap.add_argument("--lyrics", required=True),
                                   ap.add_argument("--music", required=True),
-                                  ap.add_argument("--part", default="v1c1", choices=sorted(PARTS))))
+                                  ap.add_argument("--part", default="v1c1", choices=sorted(PARTS)),
+                                  ap.add_argument("--set", default="none", choices=("none", "office"),
+                                                  help="perform inside a built set (before the part starts, "
+                                                       "the set's intro camera runs)"),
+                                  ap.add_argument("--half", action="store_true",
+                                                  help="render every other frame (30 fps) for a quicker preview")))
     P = PARTS[A.part]
     THIGH, SHIN, hip_z = LEG_DIMS[P.legs or "adult"]
     LEG = THIGH + SHIN
@@ -352,6 +363,10 @@ def main():
     def frozen(t):
         return max((smooth((t - a) / 0.08) * (1 - smooth((t - b) / 0.12)) for a, b in FZ), default=0.0)
 
+    # lines addressed to Kevin (only in the office set, where he stands on the Manager's right)
+    to_kevin = [(ln["start"], ln["end"]) for ln in Ly["lines"]
+                if A.set == "office" and "kevin" in ln["text"].lower() and start <= ln["start"] <= end]
+
     # 1. targets per channel per frame
     T = {c: [0.0] * n for c in SPRINGS}
     stiff = [1.0] * n
@@ -368,6 +383,11 @@ def main():
             v = VERSE_VARIANTS[pidx % 4]
         facing *= 1 - 0.8 * P.calm            # a composed performer barely turns away
         p = groove_pose(t, B, v, facing, I)
+        # in the office, he turns to Kevin (on his right) for the lines addressed to him
+        wk = max((smooth((t - a + 0.3) / 0.6) * (1 - smooth((t - b) / 0.7)) for a, b in to_kevin), default=0.0)
+        if wk > 0:
+            p["yaw"] = p["yaw"] * (1 - wk) + 0.45 * wk     # partly: his face stays visible
+            p["hz"] = p["hz"] * (1 - wk) + 0.1 * wk
         # crossfade into the next phrase's groove over the last beat of the phrase
         into = (bar % 2) * 4 + pos
         if into > 7.0:
@@ -634,7 +654,19 @@ def main():
         if zc > hip_z - 0.015 and not ob.name.startswith(("hip", "knee")):
             ob.parent = chest
             ob.matrix_parent_inverse = inv
-    SL.fig_baseplate(Bld, nx=16, ny=11)
+    office, spot = None, (0.0, 0.0, 0.0)
+    if A.set == "office":   # stand on the office stage; build the room around him
+        import office_set as OS
+        spot = OS.manager_spot()
+        place = bpy.data.objects.new("place", None)
+        sc.collection.objects.link(place)
+        place.location = spot
+        root.parent = place
+        office = OS.build(sc, manager=False)
+        OS.animate_terminals(office["terminals"], n, fps)
+    else:
+        SL.fig_baseplate(Bld, nx=16, ny=11)
+    ox, oy, oz = spot
 
     if Bld.wave:   # v9: a waveform mouth
         LS.animate_wave(Bld.wave, frames)
@@ -651,6 +683,17 @@ def main():
                             {int(round((b["t"] - start) * fps)): 0.25 * P.intensity(b["t"]) ** 2
                              for b in B.b if b["beat"] in (1, 3) and P.in_chorus(b["t"])})
 
+    kevin_at = [w["start"] for w in W.w if "kevin" in w["text"].lower() and start <= w["start"] <= end]
+    # the camera's Kevin shot: from just before each mention until 8 s after it; mentions close
+    # together merge into one span, so it doesn't start drifting back between them
+    kevin_spans = []
+    for a in kevin_at:
+        if kevin_spans and a - 0.6 <= kevin_spans[-1][1] + 5.0:
+            kevin_spans[-1][1] = a + 8.0
+        else:
+            kevin_spans.append([a - 0.6, a + 8.0])
+    if office and office["kevin"] and kevin_at:
+        walk_in(office["kevin"], kevin_at[0] - 0.9, start, n, fps)
     level = 0.0
     for i, fr in enumerate(frames):
         level += (fr["level"] - level) * 0.25
@@ -675,7 +718,7 @@ def main():
         head.rotation_euler = (S["hx"][i] + 0.05 * level, S["hy"][i] + 0.075 * sway, S["hz"][i] + 0.05 * sway)
         head.keyframe_insert("rotation_euler", frame=f)
         # camera: gentle drift in the verse; in the chorus a slow orbit and a bump on 1 and 3
-        tt = t - start
+        tt = t - P.span[0]
         ang = 0.25 + 0.05 * math.sin(tt * 0.3)
         dist = 2.9 - 0.25 * smooth(tt / 25.0)
         c0 = P.chorus[0]
@@ -683,16 +726,80 @@ def main():
             ang += 0.35 * math.sin(TAU * (t - c0) / 26.0) * smooth((t - c0) / 2.0)
             dist -= 0.15 * smooth((t - c0) / 3.0) * (1 - smooth((t - P.chorus[1]) / 2.0))
         dist -= cam_bump[i]
-        cam.location = (dist * math.sin(ang), -dist * math.cos(ang), 0.66 + 0.04 * math.sin(tt * 0.4))
-        SL.aim(cam, (S["rx"][i] * 0.5, 0, 0.45 + 0.4 * (root_z[i] + 0.0)))
+        if office and t < OS.FLY[-1][0]:      # the set's intro: fly through the room
+            loc, tgt, lens = OS.fly_pose(t)
+            cam.location = loc
+            SL.aim(cam, tgt)
+            cam.data.lens = lens
+        elif office:   # in the set: moves around in front, always with the big screen behind him
+            sway = 0.06 * math.sin(tt * 0.23) + 0.025 * math.sin(tt * 0.61)
+            d0 = OS.STAGE_VIEW[1]           # (no push-ins: his feet stay in frame for the stomps)
+            if c0 <= t:
+                sway += 0.1 * math.sin(TAU * (t - c0) / 26.0) * smooth((t - c0) / 2.0)
+            dz = 0.03 * math.sin(tt * 0.4)
+            settle = smooth((t - OS.FLY[-1][0]) / 3.0)   # the drift fades in after the fly-through lands
+            sway, dz = sway * settle, dz * settle
+            loc, tgt, lens = OS.stage_pose(sway, d0 - 0.12 * cam_bump[i] * settle, dz)
+            # when Kevin is mentioned, dolly slowly over to the Kevin shot, hold, and ease back
+            kev = max((smoother((t - a) / 3.0) * (1 - smoother((t - b) / 5.0)) for a, b in kevin_spans),
+                      default=0.0)   # dolly over, stay a good while, drift back slowly
+            if kev > 0:
+                kl, kt, kn = OS.KEVIN_SHOT
+                kl = (kl[0], kl[1] - 0.25 * cam_bump[i], kl[2] + dz)
+                loc = [a + (b - a) * kev for a, b in zip(loc, kl)]
+                tgt = [a + (b - a) * kev for a, b in zip(tgt, kt)]
+                lens = lens + (kn - lens) * kev
+            cam.location = loc
+            SL.aim(cam, (tgt[0] + 0.2 * S["rx"][i], tgt[1], tgt[2] + 0.2 * root_z[i]))
+            cam.data.lens = lens
+        else:
+            cam.location = (ox + dist * math.sin(ang), oy - dist * math.cos(ang), oz + 0.66 + 0.04 * math.sin(tt * 0.4))
+            SL.aim(cam, (ox + S["rx"][i] * 0.5, oy, oz + 0.45 + 0.4 * (root_z[i] + 0.0)))
+            cam.data.lens = 50
         cam.keyframe_insert("location", frame=f)
         cam.keyframe_insert("rotation_euler", frame=f)
+        cam.data.keyframe_insert("lens", frame=f)
 
     if os.environ.get("DANCE_DUMP"):  # motion curves for checking timing outside Blender
         json.dump({"t": times, "root_z": root_z, **S}, open(os.environ["DANCE_DUMP"], "w"))
         return
-    LS.setup_look(sc, fps, n, A.res, A.samples, A.blur_steps, A.shutter, A.preview)
+    LS.setup_look(sc, fps, n, A.res, A.samples, A.blur_steps, A.shutter, A.preview,
+                  on_set=spot if office else None)
+    if office:
+        sc.eevee.use_raytracing = sc.eevee.use_fast_gi = not A.preview
+        OS.preview_lights(A.preview)
+    if A.flat:
+        LS.flat_look(sc)
+    if A.half:   # play the animation twice as fast at half the frame rate: every other frame
+        sc.render.fps, sc.render.frame_map_old, sc.render.frame_map_new = fps // 2, 2, 1
+        sc.frame_end = n // 2
     LS.render(sc, A.out, frames, fps, start, A.stills, A.preview)
+
+
+def walk_in(kev, t0, start, n, fps, dist=0.7, dur=1.7, steps_per_s=2.6):
+    """Kevin isn't there until he's introduced: then he walks in from off-frame right (stepping,
+    with a little bob) to his spot, and turns to face the Manager. Not rendered before."""
+    home = kev.location.copy()
+    face = kev.rotation_euler.z
+    hips = sorted((ob for ob in kev.children_recursive if ob.type == "EMPTY" and ob.name.startswith("hip")),
+                  key=lambda ob: ob.matrix_world.translation.x)
+    parts = [ob for ob in [kev] + list(kev.children_recursive) if ob.type != "EMPTY"]
+    f0 = int(round((t0 - start) * fps)) + 1
+    LS.key_visible(parts, 1, False)
+    LS.key_visible(parts, max(2, f0), True)
+    for f in range(max(1, f0 - 1), min(n, f0 + int((dur + 0.8) * fps)) + 1):
+        t = t0 + (f - f0) / fps
+        u = min(1.0, max(0.0, (t - t0) / dur))
+        e = 1 - (1 - u) ** 2                                   # slows down as he arrives
+        kev.location = (home.x + dist * (1 - e), home.y, home.z + 0.012 * abs(math.sin(math.pi * steps_per_s * (t - t0))) * (1 - u))
+        turn = smooth((t - t0 - dur + 0.3) / 0.6)              # walking left, then turning to the Manager
+        kev.rotation_euler.z = -1.35 * (1 - turn) + face * turn
+        kev.keyframe_insert("location", frame=f)
+        kev.keyframe_insert("rotation_euler", frame=f)
+        swing = 0.45 * math.sin(math.pi * steps_per_s * (t - t0)) * (1 - smooth((u - 0.85) / 0.15))
+        for k, h in enumerate(hips):
+            h.rotation_euler.x = swing * (1 if k else -1)
+            h.keyframe_insert("rotation_euler", frame=f)
 
 
 def find_empty(prefix):
