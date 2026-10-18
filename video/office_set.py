@@ -526,10 +526,11 @@ FLY = [
 ]
 
 
-def fly_pose(t):
+def fly_pose(t, pts=None):
     """Camera (location, look-at target, lens) at time t of the fly-through: Catmull-Rom through
-    the FLY points, eased so it glides in and settles at the end."""
-    pts, T = FLY, FLY[-1][0]
+    the FLY points (or `pts`), eased so it glides in and settles at the end."""
+    pts = pts or FLY
+    T = pts[-1][0]
 
     def cr(p0, p1, p2, p3, t):
         return [0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t ** 3)

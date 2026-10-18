@@ -335,10 +335,10 @@ def main():
     A = LS.parse_args(lambda ap: (ap.add_argument("--lyrics", required=True),
                                   ap.add_argument("--music", required=True),
                                   ap.add_argument("--part", default="v1c1", choices=sorted(PARTS)),
-                                  ap.add_argument("--set", default="none", choices=("none", "office"),
+                                  ap.add_argument("--set", default="none", choices=("none", "office", "yacht"),
                                                   help="perform inside a built set (before the part starts, "
                                                        "the set's intro camera runs)"),
-                                  ap.add_argument("--screen", help="video for the office TV (screen_graphics.py)"),
+                                  ap.add_argument("--screen", help="video for the set's big screen (screen_graphics.py)"),
                                   ap.add_argument("--screen-start", type=float, default=0.0,
                                                   help="song time of that video's first frame"),
                                   ap.add_argument("--half", action="store_true",
@@ -657,7 +657,7 @@ def main():
         if zc > hip_z - 0.015 and not ob.name.startswith(("hip", "knee")):
             ob.parent = chest
             ob.matrix_parent_inverse = inv
-    office, spot = None, (0.0, 0.0, 0.0)
+    office, yacht, spot = None, None, (0.0, 0.0, 0.0)
     if A.set == "office":   # stand on the office stage; build the room around him
         import office_set as OS
         spot = OS.manager_spot()
@@ -668,6 +668,17 @@ def main():
         office = OS.build(sc, manager=False, screen_video=A.screen,
                           screen_offset=int(round((A.screen_start - start) * fps)))
         OS.animate_terminals(office["terminals"], n, fps)
+    elif A.set == "yacht":   # on the aft deck of his third yacht; the LED wall rises behind him
+        import yacht_set as YS
+        spot = YS.founder_spot()
+        place = bpy.data.objects.new("place", None)
+        sc.collection.objects.link(place)
+        place.location = spot
+        root.parent = place
+        yacht = YS.build(sc, founder=False, screen_video=A.screen,
+                         screen_offset=int(round((A.screen_start - start) * fps)))
+        YS.animate_led(yacht, *YS.LED_RISE, start, n, fps)
+        YS.animate_sea(yacht["sea"], n, fps)
     else:
         SL.fig_baseplate(Bld, nx=16, ny=11)
     ox, oy, oz = spot
@@ -730,7 +741,20 @@ def main():
             ang += 0.35 * math.sin(TAU * (t - c0) / 26.0) * smooth((t - c0) / 2.0)
             dist -= 0.15 * smooth((t - c0) / 3.0) * (1 - smooth((t - P.chorus[1]) / 2.0))
         dist -= cam_bump[i]
-        if office and t < OS.FLY[-1][0]:      # the set's intro: fly through the room
+        if yacht:   # zoom in from the sea, then the stage shot, drifting (like the office's)
+            sway = 0.06 * math.sin(tt * 0.23) + 0.025 * math.sin(tt * 0.61)
+            if c0 <= t:
+                sway += 0.1 * math.sin(TAU * (t - c0) / 26.0) * smooth((t - c0) / 2.0)
+            dz = 0.02 * math.sin(tt * 0.4)
+            settle = smooth((tt - YS.FLY[-1][0]) / 3.0)
+            loc, tgt, lens = YS.stage_pose(sway * settle, YS.STAGE_VIEW[1] - 0.15 * cam_bump[i] * settle,
+                                           dz * settle)
+            if tt < YS.FLY[-1][0]:
+                loc, tgt, lens = YS.fly_pose(tt)
+            cam.location = loc
+            SL.aim(cam, (tgt[0] + 0.2 * S["rx"][i], tgt[1], tgt[2] + 0.2 * root_z[i]))
+            cam.data.lens = lens
+        elif office and t < OS.FLY[-1][0]:      # the set's intro: fly through the room
             loc, tgt, lens = OS.fly_pose(t)
             cam.location = loc
             SL.aim(cam, tgt)
@@ -768,9 +792,10 @@ def main():
         json.dump({"t": times, "root_z": root_z, **S}, open(os.environ["DANCE_DUMP"], "w"))
         return
     LS.setup_look(sc, fps, n, A.res, A.samples, A.blur_steps, A.shutter, A.preview,
-                  on_set=spot if office else None)
-    if office:
+                  on_set=spot if office or yacht else None)
+    if office or yacht:
         sc.eevee.use_raytracing = sc.eevee.use_fast_gi = not A.preview
+    if office:
         OS.preview_lights(A.preview)
     if A.flat:
         LS.flat_look(sc)
