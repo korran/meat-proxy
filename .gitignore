@@ -4,3 +4,4 @@ peaks/
 *.rpp-bak
 stems/
 video/build/
+__pycache__/

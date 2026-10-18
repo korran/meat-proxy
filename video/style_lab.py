@@ -38,14 +38,14 @@ PAL = {
 def args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--out", default="video/build/style")
     ap.add_argument("--styles", default=",".join(STYLES))
     ap.add_argument("--res", type=int, default=1080, help="output height in pixels")
     ap.add_argument("--samples", type=int, default=32)
     ap.add_argument("--lineup", action="store_true", help="render the cast lineup (fig style) instead")
     ap.add_argument("--cam", help="lineup camera override: 'x,y,z:tx,ty,tz:lens' (for close-ups)")
     ap.add_argument("--name", default="cast_lineup", help="output file name (without .png)")
-    return ap.parse_args(argv)
+    return ap.parse_known_args(argv)[0]  # tolerate other scripts' args when imported
 
 
 A = args()
@@ -219,12 +219,19 @@ class Builder:
             n = len(ring)
             faces = [(0, 1 + i, 1 + (i + 1) % n) for i in range(n)]
         elif shape == "ellipse":
-            n = 48
+            # concentric rings, so a wide print bends with a curved surface instead of its long
+            # fan triangles dipping under it (which showed the surface through as holes)
+            n, rings = 48, 8
             pts2d.append((0.0, 0.0))
-            for i in range(n):
-                a = 2 * math.pi * i / n
-                pts2d.append((sx * math.cos(a), sz * math.sin(a)))
+            for k in range(1, rings + 1):
+                f = k / rings
+                for i in range(n):
+                    a = 2 * math.pi * i / n
+                    pts2d.append((f * sx * math.cos(a), f * sz * math.sin(a)))
             faces = [(0, 1 + i, 1 + (i + 1) % n) for i in range(n)]
+            for k in range(rings - 1):
+                r0, r1 = 1 + k * n, 1 + (k + 1) * n
+                faces += [(r0 + i, r1 + i, r1 + (i + 1) % n, r0 + (i + 1) % n) for i in range(n)]
         else:
             nx, nz = 12, 3
             for j in range(nz + 1):
@@ -848,7 +855,7 @@ def face_mouth(B, c, kind="smile"):
 
 # ------------------------------------------------------------------ cast members
 
-def build_manager(B):
+def build_manager(B, mouth=True):
     top = fig_torso(B, fig_adult_legs(B, "#3a3f4a", "#15161b"), "#3a3f4a")
     z0 = top - FIG["torso_h"]
     print_poly(B, "shirt_v", [(-0.055, top - 0.003), (0.055, top - 0.003), (0, top - 0.15)], "white")
@@ -860,10 +867,10 @@ def build_manager(B):
     print_poly(B, "pocketsq", [(-0.11, top - 0.07), (-0.07, top - 0.07), (-0.08, top - 0.05), (-0.1, top - 0.05)],
                "#f2c14e", off=0.0012)
     fig_arms(B, top, "#3a3f4a", "fig_skin")
-    manager_head(B, top, "#4a3326")
+    manager_head(B, top, "#4a3326", mouth=mouth)
 
 
-def manager_head(B, top, hair, visor=False):
+def manager_head(B, top, hair, visor=False, mouth=True):
     """The Manager's face: confident brows, a wide salesy grin, neat side-parted hair.
     The Founder is the same man later on: same grin and haircut, silver hair, a mirrored visor."""
     c, cyl = fig_head(B, top, "fig_skin")
@@ -874,8 +881,9 @@ def manager_head(B, top, hair, visor=False):
         face_eyes(B, c, cyl)
         for s in (-1, 1):
             B.decal(f"brow{s}", "bar", 0.037 * s, c + 0.042, 0.02, 0.0055, hair, cyl, 0.0008, rot=-0.12 * s)
-    grin = ((-0.034, c - 0.018), (-0.012, c - 0.034), (0.012, c - 0.034), (0.034, c - 0.018))
-    B.tube("grin", [on_cyl(x, z) for x, z in grin], 0.0038, "eye")
+    if mouth:  # leave it off when animated mouth shapes are added instead (video/lipsync_demo.py)
+        grin = ((-0.034, c - 0.018), (-0.012, c - 0.034), (0.012, c - 0.034), (0.034, c - 0.018))
+        B.tube("grin", [on_cyl(x, z) for x, z in grin], 0.0038, "eye")
     B.sphere("hair", (0, 0.012, c + 0.072), (0.108, 0.108, 0.05), hair, kind="glossy")
     B.capsule("part", (-0.05, -0.06, c + 0.098), (0.06, -0.03, c + 0.11), 0.02, hair, kind="glossy")
 
@@ -1246,8 +1254,9 @@ def render_lineup():
     print("LINEUP ->", sc.render.filepath)
 
 
-if A.lineup:
-    render_lineup()
-else:
-    for s in A.styles.split(","):
-        render_style(s.strip())
+if __name__ == "__main__":  # importable by other scripts (e.g. video/lipsync_demo.py)
+    if A.lineup:
+        render_lineup()
+    else:
+        for s in A.styles.split(","):
+            render_style(s.strip())
