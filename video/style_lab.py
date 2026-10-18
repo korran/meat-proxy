@@ -212,6 +212,11 @@ class Builder:
             pts2d += [(sx * u, sz * v) for u, v in ring]
             n = len(ring)
             faces = [(0, 1 + i, 1 + (i + 1) % n) for i in range(n)]
+        elif isinstance(shape, tuple) and shape[0] == "band":  # strip between two curves (same length)
+            top, bot = shape[1], shape[2]
+            n = len(top)
+            pts2d = [(sx * u, sz * v) for u, v in list(top) + list(bot)]
+            faces = [(i, i + 1, n + i + 1, n + i) for i in range(n - 1)]
         elif isinstance(shape, list):  # closed outline in unit coordinates, fan-filled from its centre
             ring = smooth_closed(shape, 6)
             pts2d.append((0.0, 0.0))

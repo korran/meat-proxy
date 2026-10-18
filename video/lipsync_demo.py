@@ -24,48 +24,131 @@ import style_lab as SL  # noqa: E402  (cast builders)
 DARK, TEETH, TONGUE, LIP = "#3b1d1d", "#fafafa", "#d9657a", "#e3a98a"
 
 
-def build_mouths(B, c, cyl, dz=0.0, lips=None):
-    """One printed mouth per viseme, all at the same spot on the face (dz moves them down, e.g.
-    to clear the Founder's visor). With `lips` (a colour) the mouth wears lipstick: closed shapes
-    are coloured lips and open ones get a coloured rim."""
-    c = c + dz
-    mc = c - 0.026
+# Mouth shapes: (half width, opening above the mouth line, opening below it, corner lift, upper
+# teeth, tongue, lower teeth). Every shape is drawn from the same outline, so the corners stay in
+# place and keep the character's smile while the mouth opens, widens and rounds. Like a printed
+# toy-figure mouth, the open smiles are "D" shapes: a nearly flat top edge with a straight strip
+# of teeth along it, and the smile carried by the rounded bottom edge. OH and OO stay round.
+SHAPES = {
+    "FV": (0.021, 0.005, 0.0035, 0.3, 0.0055, 0.0, 0.0),     # upper teeth resting on the lower lip
+    "EE": (0.032, 0.004, 0.011, 1.0, 0.0045, 0.0, 0.0),    # wide, toothy
+    "EH": (0.029, 0.006, 0.014, 0.7, 0.004, 0.005, 0.0),
+    "AH": (0.028, 0.008, 0.025, 0.45, 0.0045, 0.009, 0.0),  # jaw dropped
+    "OH": (0.017, 0.011, 0.017, 0.0, 0.003, 0.006, 0.0),    # round
+    "OO": (0.0095, 0.0075, 0.0085, 0.0, 0.0, 0.0, 0.0),     # small and pursed
+}
 
-    def ell(name, z, sx, sz, col, off):
-        return B.decal(name, "ellipse", 0.0, z, sx, sz, col, cyl, off)
+
+def stroke(B, name, pts, r, cyl, col="eye", off=0.0016, taper=0.45):
+    """A flat printed line through pts (smoothly curved), r thick at the middle and tapering to
+    taper*r at the ends, like a pen line printed on the face (a tube would look 3D)."""
+    n = len(pts)
+    path = []
+    for i in range(n - 1):
+        p0, p1, p2, p3 = pts[max(0, i - 1)], pts[i], pts[i + 1], pts[min(n - 1, i + 2)]
+        for k in range(8):
+            t = k / 8
+            path.append(tuple(0.5 * (2 * p1[d] + (-p0[d] + p2[d]) * t + (2 * p0[d] - 5 * p1[d] + 4 * p2[d] - p3[d])
+                                     * t * t + (-p0[d] + 3 * p1[d] - 3 * p2[d] + p3[d]) * t ** 3) for d in (0, 1)))
+    path.append(tuple(pts[-1]))
+    top, bot = [], []
+    m = len(path)
+    for i, (x, z) in enumerate(path):
+        xa, za = path[max(0, i - 1)]
+        xb, zb = path[min(m - 1, i + 1)]
+        dx, dz = xb - xa, zb - za
+        ln = math.hypot(dx, dz) or 1.0
+        nx, nz = -dz / ln, dx / ln
+        f = i / (m - 1)
+        w = r * (taper + (1 - taper) * math.sin(math.pi * f) ** 0.5)
+        top.append((x + nx * w, z + nz * w))
+        bot.append((x - nx * w, z - nz * w))
+    return B.decal(name, ("band", top, bot), 0.0, 0.0, 1.0, 1.0, col, cyl, off)
+
+
+def build_mouths(B, c, cyl, dz=0.0, lips=None, smile=0.016):
+    """One printed mouth per viseme, all at the same spot on the face (dz moves them down, e.g.
+    to clear the Founder's visor). smile: how far the corners turn up (the Manager's salesy grin).
+    With `lips` (a colour) the mouth wears lipstick: coloured lips frame every shape."""
+    c = c + dz
+    mc = c - 0.03                                   # the mouth line, at the centre
+    N = 41
+
+    def band(name, top, bot, col, off):
+        return B.decal(name, ("band", top, bot), 0.0, 0.0, 1.0, 1.0, col, cyl, off)
+
+    def curves(w, up, dn, lift, us=(-1.0, 1.0)):
+        """Upper and lower edge of the opening, sampled between us[0] and us[1] (-1..1 = corner
+        to corner)."""
+        top, bot = [], []
+        for i in range(N):
+            u = us[0] + (us[1] - us[0]) * i / (N - 1)
+            base = mc + smile * lift * u * u
+            p = math.sqrt(max(0.0, 1 - u * u))
+            if lift > 0:   # D shape: a straight top edge with sharp corners, the jaw drops below it
+                top.append((w * u, mc + up))
+                bot.append((w * u, mc + up - (up + dn) * p ** (1 - 0.35 * lift)))
+            else:
+                top.append((w * u, base + up * p))
+                bot.append((w * u, base - dn * p))
+        return top, bot
 
     def line(name, pts, r):
-        return B.tube(name, [SL.on_cyl(x, z) for x, z in pts], r, "eye")
+        return stroke(B, name, pts, r, cyl)
 
-    def rim(name, z, sx, sz):  # lipstick around an open mouth
-        return [ell(name + "_lip", z, sx + 0.005, sz + 0.004, lips, 0.0006)] if lips else []
+    def hump(x, w):
+        return math.sqrt(max(0.0, 1 - (x / w) ** 2))
+
+    def lipstick(name, w, up, dn, lift, thick=1.0):
+        """Coloured lips around an opening: a band above the upper edge and a fuller one below."""
+        if not lips:
+            return []
+        W = w + 0.004
+        top, bot = curves(W, up + 0.001, dn + 0.001, lift)
+        outer_t = [(x, z + 0.0045 * thick * hump(x, W) + 0.0006) for x, z in top]
+        outer_b = [(x, z - 0.006 * thick * hump(x, W) - 0.0006) for x, z in bot]
+        return [band(name + "_ulip", outer_t, top, lips, 0.0012), band(name + "_llip", bot, outer_b, lips, 0.0012)]
+
+    def shape(name, w, up, dn, lift, teeth, tongue, lteeth):
+        """Each part is a strip between two curves sampled across the mouth, so it follows the
+        curve of the head (big flat triangles would sink into it)."""
+        top, bot = curves(w, up, dn, lift)
+        objs = []
+        if not lips:   # a dark rim: the same shape a little bigger, behind it
+            e = 0.0013
+            et, eb = curves(w + e, up + e, dn + e, lift)
+            objs.append(band(f"m_{name}_edge", et, eb, "eye", 0.0008))
+        objs.append(band(f"m_{name}", top, bot, DARK, 0.0011))
+        top_z, bot_z = mc + up, mc - dn
+        if teeth:      # the top of the opening, cut off straight: a strip of teeth
+            level = max(top_z - teeth, bot_z + 0.0025)
+            objs.append(band(f"m_{name}_teeth", [(x, zt - 0.0006) for x, zt in top],
+                             [(x, min(zt - 0.0006, max(zb, level))) for (x, zt), (_, zb) in zip(top, bot)],
+                             TEETH, 0.0016))
+        if tongue:     # the bottom of the opening: the tongue
+            level = min(bot_z + tongue, top_z - teeth - 0.002)
+            objs.append(band(f"m_{name}_tongue", [(x, max(zb, min(zt, level))) for (x, zt), (_, zb) in zip(top, bot)],
+                             [(x, zb + 0.0004) for x, zb in bot], TONGUE, 0.0014))
+        if name == "OO" and not lips:   # pursed lips ring
+            objs.append(B.decal("m_OO_lips", "ellipse", 0.0, mc - 0.0005, w + 0.0055, up + 0.005, LIP, cyl, 0.0006))
+        return objs + lipstick(f"m_{name}", w, up, dn, lift)
 
     if lips:
-        rest = [ell("m_rest", c - 0.03, 0.02, 0.008, lips, 0.0012),
-                line("m_rest_line", ((-0.016, c - 0.0305), (0.0, c - 0.032), (0.016, c - 0.0305)), 0.0014)]
-        mbp = [ell("m_mbp", mc - 0.002, 0.022, 0.0055, lips, 0.0012)]
+        rest = lipstick("m_rest", 0.021, 0.0, 0.0, 0.35) + [
+            line("m_rest_line", curves(0.019, 0, 0, 0.35)[0][2:-2:4], 0.0012)]
+        mbp = lipstick("m_mbp", 0.017, 0.0, 0.0, 0.0, thick=0.55) + [
+            line("m_mbp_line", curves(0.016, 0, 0, 0.0)[0][2:-2:4], 0.0016)]
     else:
         rest = [line("m_rest", ((-0.034, c - 0.018), (-0.012, c - 0.034), (0.012, c - 0.034), (0.034, c - 0.018)),
                      0.0038)]
-        mbp = [line("m_mbp", ((-0.03, mc), (0.0, mc - 0.002), (0.03, mc)), 0.0044)]
-    return {
-        "rest": rest,
-        "MBP": mbp,
-        "FV": [ell("m_fv", mc + 0.001, 0.028, 0.0065, DARK, 0.001),
-               ell("m_fv_teeth", mc + 0.0035, 0.02, 0.0032, TEETH, 0.0016)] + rim("m_fv", mc + 0.001, 0.028, 0.0065),
-        "EE": [ell("m_ee", mc, 0.034, 0.009, DARK, 0.001),
-               ell("m_ee_teeth", mc + 0.0045, 0.026, 0.0035, TEETH, 0.0016)] + rim("m_ee", mc, 0.034, 0.009),
-        "EH": [ell("m_eh", mc - 0.002, 0.03, 0.014, DARK, 0.001),
-               ell("m_eh_teeth", mc + 0.0085, 0.018, 0.0035, TEETH, 0.0016),
-               ell("m_eh_tongue", mc - 0.01, 0.016, 0.0045, TONGUE, 0.0016)] + rim("m_eh", mc - 0.002, 0.03, 0.014),
-        "AH": [ell("m_ah", mc - 0.005, 0.031, 0.021, DARK, 0.001),
-               ell("m_ah_teeth", mc + 0.012, 0.016, 0.004, TEETH, 0.0016),
-               ell("m_ah_tongue", mc - 0.019, 0.018, 0.0065, TONGUE, 0.0016)] + rim("m_ah", mc - 0.005, 0.031, 0.021),
-        "OH": [ell("m_oh", mc - 0.003, 0.019, 0.019, DARK, 0.001),
-               ell("m_oh_tongue", mc - 0.014, 0.009, 0.004, TONGUE, 0.0016)] + rim("m_oh", mc - 0.003, 0.019, 0.019),
-        "OO": [ell("m_oo_lips", mc - 0.002, 0.016, 0.016, lips or LIP, 0.0008),
-               ell("m_oo", mc - 0.002, 0.0095, 0.0105, DARK, 0.0014)],
-    }
+        # lips pressed together: a short, straighter, heavier line with a crease under it
+        mbp = [line("m_mbp", ((-0.025, mc + 0.0045), (-0.01, mc - 0.0008), (0.01, mc - 0.0008), (0.025, mc + 0.0045)),
+                    0.0046),
+               line("m_mbp_crease", ((-0.008, mc - 0.0125), (0.0, mc - 0.0135), (0.008, mc - 0.0125)), 0.0018)]
+    out = {"rest": rest, "MBP": mbp}
+    for name, spec in SHAPES.items():
+        out[name] = shape(name, *spec)
+    return out
 
 
 # Eyelid notches (the Anchor's lids drop one per line): each notch is its own drawing of a
@@ -91,7 +174,7 @@ def build_lids(B, c, cyl):
             # the heavy lid: an arc lying along the top of the eye, a little wider than it
             arc = [(x + 0.0165 * u, zc + h * 0.45 + (h * 0.55 + 0.0012) * (1 - u * u)) for u in
                    (-1, -0.6, -0.25, 0.0, 0.25, 0.6, 1)]
-            objs.append(B.tube(f"slid{k}_{s}", [SL.on_cyl(px, pz, 0.0018) for px, pz in arc], 0.0022, "eye"))
+            objs.append(stroke(B, f"slid{k}_{s}", arc, 0.0022, cyl, off=0.0018, taper=0.6))
             objs.append(B.decal(f"slash{k}_{s}", "bar", x + 0.017 * s, zc + h * 0.45 + 0.001, 0.007, 0.0022,
                                 "eye", cyl, 0.0016, rot=-0.25 * s))
         sets.append(objs)
@@ -116,7 +199,8 @@ def singing_figure(B, sc, who="manager"):
     c = top + 0.12
     cyl = ((0, 0, c), (0.1, 0.1, 100.0))
     mouths = build_mouths(B, c, cyl, dz=-0.004 if who == "founder" else 0.0,
-                          lips="#c8323c" if who == "anchor" else None)
+                          lips="#c8323c" if who == "anchor" else None,
+                          smile=0.006 if who == "anchor" else 0.016)
     eyes_c = c + (SL.ANCHOR_EYES_DZ if who == "anchor" else 0.0)
     B.lids = build_lids(B, eyes_c, cyl) if who == "anchor" else []
     blink = [] if who == "founder" else [
