@@ -31,7 +31,7 @@ TEX = os.path.join(HERE, "build", "yacht")
 STERN, BOW, BEAM = -60, 72, 18            # transom y, bow tip y, half-beam (studs)
 DEPTH = 26                                # hull depth below the deck, plates
 WATER = -16.5 * PL                        # sea level (world z)
-FOUNDER = (2.0, -44.0)                    # where the Founder stands: well out in front of the wall
+FOUNDER = (0.0, -44.0)                    # where the Founder stands: centred, well out in front of the wall
 SY = -32                                  # the LED wall's front face (y, studs)
 SW = 16                                   # its width, studs: all of it in the stage shot, behind him
 LED_Z0 = 0.03                             # its bottom edge when raised (world z): just above the deck
@@ -318,8 +318,8 @@ def build_yacht(K):
     for x in (-5.5, 5.5):
         K.cyl(x * P, 15.5 * P, 65 * PL, 78 * PL, 0.008, TRIMG, sides=6)
     # rails: the aft main deck, the side decks, the upper decks' aft ends
-    for a0, a1 in ((-16.5, -12), (12, 16.5)):     # the stern: open in the middle, steps down to the platform
-        glass_rail(K, "x", STERN, a0, a1, 1)
+    # the stern is open (no rail: the stage shot's camera dollies across behind it), with steps
+    # down to the platform
     for k in range(4):                          # steps down to the swim platform
         top = -2 - 3 * k
         K.piece(-6, STERN - 1 - k, -14, 12, 1, top + 14, HULL, studs=False)
@@ -332,15 +332,16 @@ def build_yacht(K):
         glass_rail(K, "y", 12 if s > 0 else -13, -16, 12, 32, h=7)
     glass_rail(K, "x", -27, -16, 16, 16, h=7)
     glass_rail(K, "x", -16, -13, 13, 32, h=7)
-    # aft deck furniture: loungers on the left, a bar table and stools on the right
-    for y in (-56, -48):
-        lounger(K, -15, y)
-        lounger(K, -12, y)
-    K.round(12, -54, 0, 2, 7, CHROME, studs=False, kind="chrome")          # bar table
-    K.round(11, -55, 7, 4, 1, WHITE, studs=False)
-    K.round(12.5, -53.5, 8, 1, 2.5, CHROME, studs=False, kind="chrome")    # champagne bucket
-    K.cyl(13.2 * P, -52.8 * P, 8 * PL, 11.5 * PL, 0.018, "#1f4a2e", sides=10)  # the bottle
-    for x, y in ((14.6, -56.0), (14.6, -52.5), (9.8, -54.2)):
+    # aft deck furniture: loungers to port, a bar table and stools to starboard
+    for y in (-42, -35):          # along the port side, out of the stage shot
+        lounger(K, -16, y)
+        lounger(K, -13, y)
+    bx, by = 13.5, -57.0          # out by the starboard rail, clear of the stage shot's dolly
+    K.round(bx, by, 0, 2, 7, CHROME, studs=False, kind="chrome")          # bar table
+    K.round(bx - 1, by - 1, 7, 4, 1, WHITE, studs=False)
+    K.round(bx + 0.5, by + 0.5, 8, 1, 2.5, CHROME, studs=False, kind="chrome")    # champagne bucket
+    K.cyl((bx + 1.2) * P, (by + 1.2) * P, 8 * PL, 11.5 * PL, 0.018, "#1f4a2e", sides=10)  # the bottle
+    for x, y in ((bx + 2.6, by - 1.5), (bx + 2.6, by + 1.8), (bx + 0.5, by + 3.0)):   # stools
         K.round(x, y, 0, 1, 5, CHROME, studs=False, kind="chrome")
         K.round(x - 0.25, y - 0.25, 5, 1.5, 0.8, "#1b2742", studs=False)
     # upper aft deck: a hot tub
@@ -500,17 +501,64 @@ def setup_render(sc, res, preview):
 
 
 # The stage shot: him head to toe (like the Manager's in the office), from further back with a
-# long lens. The camera is low, looking up, so the whole LED wall is in frame behind him
-# (with some margin for the camera's drift). (centre, distance, height, lens)
-STAGE_CENTRE = ((FOUNDER[0] - 1.5) * P, FOUNDER[1] * P + 0.8, 0.49)   # between him and the wall
+# long lens. The camera is low, looking up: the top of the LED wall at the top of the frame, his
+# shoes at the bottom. (centre, distance, height, lens)
+STAGE_CENTRE = (FOUNDER[0] * P, FOUNDER[1] * P + 0.8, 0.49)   # between him and the wall
 STAGE_VIEW = (STAGE_CENTRE, 5.5, 0.18, 95)      # back, low and long: the wall looms behind him
 
 
-def stage_pose(ang=0.0, dist=None, dz=0.0):
-    """Camera (location, target, lens) for the stage shot, swung by `ang` around its centre."""
+def stage_pose(side=0.0, dist=None, dz=0.0):
+    """Camera (location, target, lens) for the stage shot. The camera dollies sideways while
+    staying aimed at the middle of the wall, so the wall holds still in frame and he slides across
+    it: side is where he appears on the wall, -1 its left edge .. 0 centre .. 1 its right edge."""
     (cx, cy, cz), d0, h, lens = STAGE_VIEW
     d = d0 if dist is None else dist
-    return (cx + d * math.sin(ang), cy - d * math.cos(ang), h + dz), (cx, cy, cz), lens
+    cam_y = cy - d
+    ls, lf = SY * P - cam_y, FOUNDER[1] * P - cam_y     # camera to the wall, and to him
+    tz = h + (cz - h) * ls / d                          # the aim point, on the wall
+    x = side * LED_W / 2 / (1 - ls / lf)                # the dolly that puts him there
+    return (cx + x, cam_y, h + dz), (cx, SY * P, tz + dz), lens
+
+
+# Where he sits on the wall, to leave room for the graphics: (song time the move starts, side),
+# each a 2 s dolly, eased in and out (smootherstep). He starts centred. (Examples for now, moving just before lines.)
+DOLLY = [
+    (79.6, -0.75),    # "So I'll keep a human handy..."   him on the left
+    (84.4, 0.75),     # "One Kevin per division..."       right
+    (93.0, 0.0),     # "Per division?..."                centre
+    (98.2, -0.75),    # chorus: "We need a meat proxy..." left
+    (106.0, 0.75),    # "The bot breaks fifty laws..."    right
+    (115.4, 0.0),    # "Grease a couple senators..."     centre
+]
+DOLLY_MOVE = 2.0
+
+
+FACE_TURN = 0.7    # after each dolly lands, he turns to face the camera over this many seconds
+
+
+def face_yaw(side):
+    """The turn (radians, about z) that has him facing the camera when it's dollied to `side`."""
+    loc, _, _ = stage_pose(side)
+    return math.atan2(loc[0] - FOUNDER[0] * P, FOUNDER[1] * P - loc[1])
+
+
+def facing_at(t, moves=None):
+    """His turn toward the camera at song time t: each turn starts once its dolly has landed."""
+    moves = DOLLY if moves is None else moves
+    a = 0.0
+    for t0, side in moves:
+        u = min(1.0, max(0.0, (t - t0 - DOLLY_MOVE) / FACE_TURN))
+        a += (face_yaw(side) - a) * u * u * u * (u * (6 * u - 15) + 10)
+    return a
+
+
+def side_at(t, moves=None):
+    moves = DOLLY if moves is None else moves
+    s = 0.0
+    for t0, side in moves:
+        u = min(1.0, max(0.0, (t - t0) / DOLLY_MOVE))
+        s += (side - s) * u * u * u * (u * (6 * u - 15) + 10)   # smootherstep: soft start and landing
+    return s
 
 
 # The opening zoom (times from the start of verse 2): from off the port quarter, close enough to
@@ -536,8 +584,8 @@ STILLS = [
     ("stage_down", *stage_pose(), 0.0),
     ("stage_rising", *stage_pose(), 0.55),
     ("stage_up", *stage_pose(), 1.0),
-    ("stage_up_left", *stage_pose(-0.19), 1.0),     # the chorus orbit's extremes
-    ("stage_up_right", *stage_pose(0.19), 1.0),
+    ("stage_left", *stage_pose(-0.75), 1.0),    # dollied over: him toward the wall's left end
+    ("stage_right", *stage_pose(0.75), 1.0),     # ...and its right
     ("side", (24.0, -6.0, 3.2), (0.0, 0.5, 1.0), 35, 1.0),
     ("aerial", (-9.0, -17.0, 8.5), (0.0, -2.5, 0.5), 30, 1.0),
 ]

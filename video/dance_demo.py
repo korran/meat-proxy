@@ -719,7 +719,8 @@ def main():
             hip.keyframe_insert("rotation_euler", frame=f)
             knee.keyframe_insert("rotation_euler", frame=f)
         root.location = (S["rx"][i], 0.0, root_z[i])
-        root.rotation_euler = (0.0, S["roll"][i], S["yaw"][i] + spin[i])
+        face = YS.facing_at(t) if yacht else 0.0     # on the yacht: turns to the camera after each dolly
+        root.rotation_euler = (0.0, S["roll"][i], S["yaw"][i] + spin[i] + face)
         root.keyframe_insert("location", frame=f)
         root.keyframe_insert("rotation_euler", frame=f)
         chest.rotation_euler = (-S["lean"][i], S["croll"][i], S["cyaw"][i])
@@ -741,18 +742,15 @@ def main():
             ang += 0.35 * math.sin(TAU * (t - c0) / 26.0) * smooth((t - c0) / 2.0)
             dist -= 0.15 * smooth((t - c0) / 3.0) * (1 - smooth((t - P.chorus[1]) / 2.0))
         dist -= cam_bump[i]
-        if yacht:   # zoom in from the sea, then the stage shot, drifting (like the office's)
-            sway = 0.06 * math.sin(tt * 0.23) + 0.025 * math.sin(tt * 0.61)
-            if c0 <= t:
-                sway += 0.1 * math.sin(TAU * (t - c0) / 26.0) * smooth((t - c0) / 2.0)
-            dz = 0.02 * math.sin(tt * 0.4)
+        if yacht:   # zoom in from the sea, then the stage shot: aimed at the wall, dollying sideways
+            dz = 0.02 * math.sin(tt * 0.4)            # to move him across it (YS.DOLLY)
             settle = smooth((tt - YS.FLY[-1][0]) / 3.0)
-            loc, tgt, lens = YS.stage_pose(sway * settle, YS.STAGE_VIEW[1] - 0.15 * cam_bump[i] * settle,
+            loc, tgt, lens = YS.stage_pose(YS.side_at(t), YS.STAGE_VIEW[1] - 0.15 * cam_bump[i] * settle,
                                            dz * settle)
             if tt < YS.FLY[-1][0]:
                 loc, tgt, lens = YS.fly_pose(tt)
             cam.location = loc
-            SL.aim(cam, (tgt[0] + 0.2 * S["rx"][i], tgt[1], tgt[2] + 0.2 * root_z[i]))
+            SL.aim(cam, tgt)
             cam.data.lens = lens
         elif office and t < OS.FLY[-1][0]:      # the set's intro: fly through the room
             loc, tgt, lens = OS.fly_pose(t)
