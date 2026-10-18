@@ -6,7 +6,7 @@
 
 From the separated drum track:
   kick, snare, hat   onset strength per frame (rises in that band's energy), ~0..1
-  hits               detected kick and snare hits: [{t, kind, strength}]
+  hits               every drum hit: [{t, kind (kick/snare/hat), strength ~0..1}]
   drums              how busy the drums are right now (smoothed energy, ~0..1)
 From the full mix:
   loud               smoothed loudness, ~0..1 (1 = the loudest parts of the song)
@@ -51,6 +51,42 @@ def onsets(env):
     return d / ref
 
 
+def find_hits(x, sr):
+    """Drum hits: onsets of the whole drum track, each classified by what is sounding just after
+    it. A kick has a strong low end (<100 Hz); a snare has body (150-300 Hz) and noise but almost
+    no low end; anything else (mostly hi-hats) is a hat."""
+    rate = 500
+    hop = sr // rate
+    e = np.sqrt(np.convolve(x * x, np.ones(hop * 2) / (hop * 2), "same")[::hop])
+    d = np.maximum(0.0, np.diff(np.log(e + 1e-4), prepend=0.0))
+    d = np.convolve(d, np.ones(5) / 5, "same")
+    peaks, _ = find_peaks(d, height=np.percentile(d, 99.0) * 0.5, distance=int(0.07 * rate))
+    bands = {}
+    for name, lo, hi in (("low", None, 100), ("mid", 150, 300), ("noise", 1500, 6000)):
+        sos = (butter(4, hi, btype="low", fs=sr, output="sos") if lo is None
+               else butter(4, [lo, hi], btype="band", fs=sr, output="sos"))
+        bands[name] = sosfiltfilt(sos, x)
+    win = int(0.06 * sr)
+    rows = []
+    for p in peaks:
+        a = p * hop
+        rows.append({k: float(np.sqrt(np.mean(v[a:a + win] ** 2))) for k, v in bands.items()} | {"t": p / rate})
+    ref = {k: np.percentile([r[k] for r in rows], 95) for k in bands}
+    hits = []
+    for r in rows:
+        low, mid, nz = (r[k] / ref[k] for k in ("low", "mid", "noise"))
+        if low > 0.2:
+            kind, strength = "kick", low
+        elif mid > 0.55 and low < 0.12:   # quieter ones are ghost notes and bleed
+            kind, strength = "snare", max(mid, nz)
+        elif nz > 0.08:
+            kind, strength = "hat", nz
+        else:
+            continue
+        hits.append({"t": round(r["t"] - 0.004, 4), "kind": kind, "strength": round(min(1.5, strength), 3)})
+    return hits
+
+
 def smooth_level(env, seconds):
     n = max(1, int(seconds * RATE))
     s = np.convolve(env, np.ones(n) / n, "same")
@@ -74,13 +110,7 @@ def main():
     hopm = srm // RATE
     loud = smooth_level(np.sqrt(np.convolve(m * m, np.ones(hopm) / hopm, "same")[::hopm]), 0.5)
 
-    hits = []
-    for kind in ("kick", "snare"):
-        peaks, props = find_peaks(on[kind], height=0.35, distance=int(0.09 * RATE))
-        for p, h in zip(peaks, props["peak_heights"]):
-            # the hit starts where the rise starts, a few analysis frames before the peak
-            hits.append({"t": round(max(0, p - 2) / RATE, 4), "kind": kind, "strength": round(min(1.5, float(h)), 3)})
-    hits.sort(key=lambda h: h["t"])
+    hits = find_hits(d, sr)
 
     n = int(len(d) / sr * args.fps)
     idx = np.minimum((np.arange(n) / args.fps * RATE).astype(int), len(drums) - 1)

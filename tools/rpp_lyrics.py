@@ -21,6 +21,7 @@ Examples:
   tools/rpp_lyrics.py assets/audio/we_need_a_meat_proxy.rpp --lines --format lrc > song.lrc
   tools/rpp_lyrics.py assets/audio/we_need_a_meat_proxy.rpp --grid 16
   tools/rpp_lyrics.py assets/audio/we_need_a_meat_proxy.rpp --format json > lyrics.json
+  tools/rpp_lyrics.py assets/audio/we_need_a_meat_proxy.rpp --beats > beats.csv
 """
 import argparse
 import bisect
@@ -175,6 +176,8 @@ def main():
     what = ap.add_mutually_exclusive_group()
     what.add_argument("--words", action="store_true", help="word timing (default)")
     what.add_argument("--lines", action="store_true", help="line timing from regions")
+    what.add_argument("--beats", action="store_true",
+                      help="every beat's time, from the tempo map (csv: time, bar, beat, beat length, BPM)")
     ap.add_argument("--format", choices=["csv", "lrc", "json"], default="csv")
     ap.add_argument("--grid", type=int, choices=[4, 8, 16, 32],
                     help="also give beat-snapped word times on this grid (steps per 4/4 bar); json defaults to 16")
@@ -191,6 +194,17 @@ def main():
         sys.exit(f"error: no item using {args.audio!r} found; pass --audio or --project-time")
     else:
         offset = audio[0]
+    if args.beats:
+        end = (audio[0] + audio[1]) if audio else max([w[1] for w in words] + [0.0]) + 4.0
+        grid = beat_grid(tempo, end + 2.0, measure_offset)
+        w = csv.writer(sys.stdout)
+        w.writerow(["time_s", "bar", "beat", "length_s", "bpm"])
+        for (t, b, k, _), nxt in zip(grid, grid[1:]):
+            if t - offset < -0.5 or t > end:
+                continue
+            length = nxt[0] - t
+            w.writerow([f"{t - offset:.4f}", b, k, f"{length:.4f}", f"{60.0 / length:.3f}"])
+        return
     if not words and not args.lines:
         sys.exit(f"error: no lyric items on track {args.track!r} found")
     if not lines and (args.lines or args.format == "json"):

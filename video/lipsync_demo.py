@@ -127,8 +127,9 @@ def animate_head(head, frames, fps, extra=None):
         head.keyframe_insert("rotation_euler", frame=i + 1)
 
 
-def setup_look(sc, fps, n, res=1080, samples=16, blur_steps=4, shutter=1.0):
-    """Same materials, lights and grading as the cast lineup."""
+def setup_look(sc, fps, n, res=1080, samples=16, blur_steps=4, shutter=1.0, preview=False):
+    """Same materials, lights and grading as the cast lineup. preview: as fast as possible (no
+    motion blur, one sample, cheaper shadows, no ray tracing)."""
     sc.render.engine = "BLENDER_EEVEE_NEXT"
     sc.render.resolution_y = res
     sc.render.resolution_x = res * 16 // 9
@@ -139,6 +140,14 @@ def setup_look(sc, fps, n, res=1080, samples=16, blur_steps=4, shutter=1.0):
     sc.render.motion_blur_shutter = shutter
     sc.eevee.motion_blur_steps = blur_steps
     sc.eevee.motion_blur_max = int(160 * res / 1080)
+    if preview:
+        sc.render.use_motion_blur = False
+        sc.eevee.taa_render_samples = 1
+        sc.eevee.use_raytracing = False
+        sc.eevee.use_fast_gi = False
+        sc.eevee.shadow_resolution_scale = 0.5
+        sc.eevee.shadow_ray_count = 1
+        sc.eevee.shadow_step_count = 1
     sc.world = sc.world or bpy.data.worlds.new("World")
     sc.world.use_nodes = True
     bg = sc.world.node_tree.nodes["Background"]
@@ -175,7 +184,10 @@ def add_camera(sc, loc, target, lens):
     return cam
 
 
-def render(sc, out, frames, fps, start, stills=None):
+def render(sc, out, frames, fps, start, stills=None, preview=False):
+    """Render frames as PNGs into the folder `out` (or stills). In preview mode the animation is
+    written straight to a silent H.264 video, `out` + ".mp4", instead (saving PNGs is slower
+    than rendering them)."""
     out = out.rstrip("/")
     if stills:
         for t in [float(v) for v in stills.split(",")]:
@@ -184,6 +196,18 @@ def render(sc, out, frames, fps, start, stills=None):
             sc.render.filepath = f"{out}/still_{t:07.3f}_{frames[f - 1]['v']}.png"
             bpy.ops.render.render(write_still=True)
             print("STILL", t, frames[f - 1]["v"], frames[f - 1]["word"])
+    elif preview:
+        im = sc.render.image_settings
+        im.file_format = "FFMPEG"
+        sc.render.ffmpeg.format = "MPEG4"
+        sc.render.ffmpeg.codec = "H264"
+        sc.render.ffmpeg.constant_rate_factor = "HIGH"
+        sc.render.ffmpeg.ffmpeg_preset = "REALTIME"
+        sc.render.ffmpeg.audio_codec = "NONE"
+        sc.render.filepath = out + ".mp4"
+        sc.render.use_file_extension = False
+        bpy.ops.render.render(animation=True)
+        print("RENDER done", len(frames), "frames ->", sc.render.filepath)
     else:
         sc.render.filepath = f"{out}/f_####"
         bpy.ops.render.render(animation=True)
@@ -195,14 +219,19 @@ def parse_args(extra=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--visemes", required=True)
     ap.add_argument("--out", required=True, help="folder for rendered frames")
-    ap.add_argument("--res", type=int, default=1080)
+    ap.add_argument("--res", type=int, help="frame height in pixels (default 1080, preview 540)")
     ap.add_argument("--samples", type=int, default=16)
     ap.add_argument("--blur-steps", type=int, default=4)
     ap.add_argument("--shutter", type=float, default=1.0)
     ap.add_argument("--stills", help="render only these frame times (seconds, comma separated)")
+    ap.add_argument("--preview", action="store_true",
+                    help="fast check render: no motion blur, 1 sample, written straight to OUT.mp4")
     if extra:
         extra(ap)
-    return ap.parse_args(argv)
+    a = ap.parse_args(argv)
+    if a.res is None:
+        a.res = 540 if a.preview else 1080
+    return a
 
 
 def main():
@@ -218,9 +247,9 @@ def main():
     animate_mouths(mouths, frames)
     animate_blinks(eyes, blink, len(frames), fps)
     animate_head(head, frames, fps)
-    setup_look(sc, fps, len(frames), A.res, A.samples, A.blur_steps, A.shutter)
+    setup_look(sc, fps, len(frames), A.res, A.samples, A.blur_steps, A.shutter, A.preview)
     add_camera(sc, (0.38, -1.55, 0.8), (0, 0, 0.6), 70)
-    render(sc, A.out, frames, fps, start, A.stills)
+    render(sc, A.out, frames, fps, start, A.stills, A.preview)
 
 
 if __name__ == "__main__":
