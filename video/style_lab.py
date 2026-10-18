@@ -1045,8 +1045,12 @@ def hood_shell(B, c, top, color, inner="#4b5260"):
     B._finish(collar, color, "matte", subdiv=False)
 
 
-def build_v9(B):
-    """The AI: pastel, a screen for a head, and no arms (it was never given hands)."""
+V9_INK = "#5b47c4"   # what v9's screen draws with
+
+
+def build_v9(B, face=True):
+    """The AI: pastel, a screen for a head, and no arms (it was never given hands). face=False
+    leaves the screen blank (for animated eyes and mouths, see video/lipsync_demo.py)."""
     top = fig_torso(B, fig_kid_legs(B, "#b9a7f5", "#f6a6c8", sole="white"), "#b9a7f5")
     B.text("v9label", "AGENT v9", FONT_BOLD, 0.03, (0, -0.0765, top - 0.13), "#6a58c9")
     for s in (-1, 1):  # smooth shoulder caps where arms would be
@@ -1055,19 +1059,53 @@ def build_v9(B):
     c = top + 0.13
     B.box("screenhead", (0, 0, c), (0.28, 0.1, 0.2), "#b9a7f5", bevel=0.03)
     B.box("screen", (0, -0.048, c), (0.235, 0.008, 0.155), "#f3f0ff", bevel=0.012, kind="glow")
-    face = ("plane", -0.0525)
-    for s in (-1, 1):  # ^ ^ eyes
-        for k in (-1, 1):
-            B.decal(f"eye{s}{k}", "bar", 0.05 * s + 0.011 * k, c + 0.025, 0.014, 0.004, "#5b47c4", face, 0.001,
-                    rot=0.75 * k * -1)
-    for i in range(9):  # loading-spinner smile: dots fading along an arc
-        a = math.pi * (1.15 + 0.7 * i / 8)
-        shade = 0.25 + 0.75 * i / 8
-        col = "#%02x%02x%02x" % tuple(int(255 - (255 - v) * shade) for v in (91, 71, 196))
-        B.decal(f"spin{i}", "ellipse", 0.05 * math.cos(a), c - 0.005 + 0.05 * math.sin(a), 0.007, 0.007, col,
-                face, 0.001)
+    if face:
+        v9_eyes(B, c, "happy")
+        v9_spinner(B, c)
     B.capsule("antenna", (0.07, 0, c + 0.1), (0.09, 0, c + 0.15), 0.008, "#9d8ae8")
     B.sphere("antennaball", (0.09, 0, c + 0.16), (0.02, 0.02, 0.02), "#f6a6c8", kind="glossy")
+
+
+V9_SCREEN = ("plane", -0.0525)
+
+
+def v9_eyes(B, c, kind, name="eye"):
+    """v9's screen eyes: happy ^ ^, round o o, hearts, smug > <, or closed - -."""
+    objs = []
+    for s in (-1, 1):
+        x, z = 0.05 * s, c + 0.03
+        if kind == "happy":
+            for k in (-1, 1):
+                objs.append(B.decal(f"{name}{s}{k}", "bar", x + 0.011 * k, z, 0.014, 0.004, V9_INK, V9_SCREEN, 0.001,
+                                    rot=-0.75 * k))
+        elif kind == "smug":       # > <  (each eye points in toward the nose)
+            for k in (-1, 1):
+                objs.append(B.decal(f"{name}{s}{k}", "bar", x + 0.004 * s, z + 0.007 * k, 0.012, 0.004, V9_INK,
+                                    V9_SCREEN, 0.001, rot=0.6 * k * s))
+        elif kind == "round":
+            objs.append(B.decal(f"{name}{s}", "ellipse", x, z, 0.014, 0.017, V9_INK, V9_SCREEN, 0.001))
+            objs.append(B.decal(f"{name}{s}g", "ellipse", x + 0.004, z + 0.006, 0.0045, 0.0055, "white", V9_SCREEN,
+                                0.0015))
+        elif kind == "heart":
+            heart = [(0, -1), (-0.75, -0.1), (-0.95, 0.45), (-0.55, 0.9), (0, 0.5), (0.55, 0.9), (0.95, 0.45),
+                     (0.75, -0.1)]
+            objs.append(B.decal(f"{name}{s}", heart, x, z, 0.02, 0.018, "#f06292", V9_SCREEN, 0.001))
+        else:  # closed
+            objs.append(B.decal(f"{name}{s}", "bar", x, z - 0.004, 0.015, 0.004, V9_INK, V9_SCREEN, 0.001))
+    return objs
+
+
+def v9_spinner(B, c, phase=0, name="spin", n=9):
+    """The loading-spinner smile: dots along an arc, fading toward one end (phase shifts the
+    bright head of the spinner along the arc)."""
+    objs = []
+    for i in range(n):
+        a = math.pi * (1.15 + 0.7 * i / (n - 1))
+        shade = 0.25 + 0.75 * ((i - phase) % n) / (n - 1)
+        col = "#%02x%02x%02x" % tuple(int(255 - (255 - v) * shade) for v in (91, 71, 196))
+        objs.append(B.decal(f"{name}{i}", "ellipse", 0.05 * math.cos(a), c - 0.005 + 0.05 * math.sin(a), 0.007,
+                            0.007, col, V9_SCREEN, 0.001))
+    return objs
 
 
 def build_user(B):

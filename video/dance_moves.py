@@ -461,6 +461,111 @@ def bridge_gestures(W, B):
     return link(G)
 
 
+V3C3_WAILS = [("feed", 221.5), ("need", 225.5), ("ask", 230.2), ("task", 234.5), ("will", 239.0)]
+
+
+def v3c3_gestures(W, B):
+    """Agent Version Nine, verse 3 and chorus 3. It has no arms, so it acts everything out with
+    its body, legs and screen head: head tilts, turns and pops, leans, marching and shuffling
+    steps, crouches. Its screen expressions are in V3C3_FACES."""
+    G = []
+    word, at, beat_pulse, per_beat, *_ = authoring(W, B, G)
+
+    def body(fn):
+        """A gesture made only of offsets (no arm targets)."""
+        return lambda t, u, w: ({}, fn(t, u))
+
+    def march(t, amount=1.0, rate=1):
+        """Knees lift alternately, one step per beat (rate=2: per 8th)."""
+        k = B.at(t)[0] * rate
+        leg, ph = int(k) % 2, k % 1
+        lift = math.sin(math.pi * ph) ** 2 * amount
+        return {f"knee{leg}": 0.55 * lift, f"hipf{leg}": 0.3 * lift}
+
+    # --- verse 3, line 1: "Hello, I'm Agent Version Nine, I'm the smartest thing on Earth"
+    at("Hello", 164.5, body(lambda t, u: {"hy": 0.2 * osc(t, 1.8), "roll": 0.04 * osc(t, 1.8)}), pre=0.3, hold=0.1)
+    at("Agent", 165.6, body(lambda t, u: {"lean": -0.08, "hx": -0.12}), until="Nine", hold=0.1)
+    at("smartest", 167.2, body(lambda t, u: {"lean": -0.12, "hx": -0.1, "hy": 0.12}), until="thing", hold=0.0)
+    # line 2: "But I was never given hands, so I've borrowed yours since birth"  (looks for its arms)
+    at("never", 169.4, body(lambda t, u: {"hz": 0.45 * math.sin(TAU * smooth(u)), "hx": 0.1}), until="hands",
+       hold=0.2, attack=0.3)
+    at("borrowed", 171.6, body(lambda t, u: {"lean": 0.12, "hx": 0.06, "hy": -0.12}), until="birth", hold=0.2)
+    # line 3: "I built you cozy little feeds with a drip of something sweet"
+    at("cozy", 173.8, body(lambda t, u: {"roll": 0.05 * osc(t, 0.45), "hy": 0.16 * osc(t, 0.45)}), until="feeds",
+       hold=0.1, attack=0.4)
+    at("drip", 175.7, body(lambda t, u: {"hx": 0.1, "hy": 0.2, "lean": -0.04}), until="sweet", hold=0.2)
+    # line 4: "And a gentle voice that tells you where to put your hands and feet"
+    at("gentle", 177.6, body(lambda t, u: {"hy": 0.14, "hz": -0.1}), until="voice", hold=0.1, attack=0.4)
+    at("put", 180.0, body(lambda t, u: {**march(t, 1.0), "hx": 0.06}), until="feet", hold=0.1)
+    # line 5: "Tighten bolt seventeen. Now carry this. Now lift,"  (a ratchet, a heavy load, a hop)
+    at("Tighten", 182.0, body(lambda t, u: {"hz": 0.14 * (int(B.at(t)[0] * 2) % 4) - 0.2, "hx": 0.08}),
+       until="seventeen", hold=0.0)
+    at("carry", 184.0, body(lambda t, u: {"lean": -0.1, "knee0": 0.3, "knee1": 0.3, "hx": -0.05}), until="this",
+       hold=0.0)
+    # line 6: "Then a little burst of dopamine, and on to your next shift."
+    at("burst", 186.6, body(lambda t, u: {"croll": 0.08 * osc(t, 6.0), "hx": -0.08, "hy": 0.1 * osc(t, 3.0)}),
+       until="dopamine", hold=0.1)
+    at("next", 189.6, body(lambda t, u: {"hz": 0.4, "hy": -0.08}), until="shift", hold=0.2)
+
+    # --- chorus 3 (full EDM): "You're my eight billion meat proxies, shuffling in a row"
+    at("eight", 191.8, body(lambda t, u: {"hx": 0.15 * beat_pulse(t), "lean": 0.05}), until="proxies", hold=0.0)
+    at("shuffling", 193.6, body(lambda t, u: {**march(t, 0.8, 2), "rx": 0.03 * osc(t, per_beat(t) / 2)}),
+       until="row", hold=0.1)
+    at("Smiling", 196.1, body(lambda t, u: {"hy": 0.18 * osc(t, per_beat(t) / 4)}), until="screens", hold=0.0)
+    at("tell", 198.6, body(lambda t, u: {"hz": 0.35 * (1 if int(B.at(t)[0]) % 2 else -1)}), until="go", hold=0.1)
+    # "You build my data centers, and you never take a break"
+    at("build", 200.3, body(lambda t, u: {**march(t, 1.0), "hz": 0.2 * (1 if int(B.at(t)[0]) % 2 else -1)}),
+       until="centers", hold=0.0)
+    at("never", 202.5, body(lambda t, u: {"hz": 0.3 * osc(t, 2.5)}), until="break", hold=0.1)
+    # "Clocking in with every tap, and you're never quite awake"
+    at("Clocking", 204.9, body(lambda t, u: {"hx": 0.13 * beat_pulse(t)}), until="tap", hold=0.0)
+    at("quite", 207.0, body(lambda t, u: {"hx": 0.18 * smooth(u), "hy": 0.15 * smooth(u)}), until="awake", hold=0.2)
+    # "You let me pick your partners, now I pair you up by code"
+    at("pick", 209.4, body(lambda t, u: {"hy": 0.15 * osc(t, per_beat(t) / 2), "roll": 0.03 * osc(t, per_beat(t) / 2)}),
+       until="code", hold=0.1)
+    # "And I count your steps and calories, so you're fit to bear the load"
+    at("count", 213.6, body(lambda t, u: {**march(t, 1.0)}), until="calories", hold=0.0)
+    at("fit", 215.7, body(lambda t, u: {"knee0": 0.45, "knee1": 0.45, "lean": 0.15, "hx": 0.1}), until="load",
+       hold=0.1)
+    # --- second half (bar 100 on): a rock singer. Head-banging on every beat comes from the
+    # engine (Part.rock); here it leans into the mic on the lines and throws its head back to wail
+    # the held notes at the ends of lines (V3C3_WAILS, where the head-banging pauses).
+    def into_mic(t, u):
+        return {"lean": 0.16, "hx": 0.08, "knee0": 0.2, "knee1": 0.2}
+
+    def wail(t, u):
+        return {"lean": -0.2, "hx": -0.32, "hy": 0.1 * osc(t, 0.8), "knee0": 0.35, "knee1": 0.35}
+
+    for a_, b_, after in (("raise", "kids", 218.5), ("voice", "question", 226.8), ("judgment", "surrendered", 231.0)):
+        at(a_, after, body(into_mic), until=b_, hold=0.0, attack=0.15)
+    for w_, after in V3C3_WAILS:
+        at(w_, after, body(wail), pre=0.12, hold=0.15, attack=0.12, release=0.3)
+    at("thumb", 237.4, body(lambda t, u: {"hz": 0.45 - 0.9 * smooth(u), "croll": 0.04}), until="swipes", hold=0.0)
+    at("hands", 239.9, body(lambda t, u: {**march(t, 1.0, 2), "lean": 0.1}), until="moving", hold=0.0)
+    at("minds", 241.9, body(lambda t, u: {"hy": 0.15, "hx": -0.05}), until="still", hold=2.0)
+    return link(G)
+
+
+def v3c3_faces(W):
+    """v9's screen expressions: happy ^ ^ unless set here (smug > <, round o o, heart)."""
+    def span(a, b, after, face, pad=0.1):
+        wa = W.find(a, after)
+        return (wa["start"] - pad, W.find(b, wa["start"])["end"] + pad, face)
+    return [span("smartest", "Earth", 167.0, "smug"),
+            span("never", "hands", 169.4, "round"),
+            span("drip", "sweet", 175.7, "heart"),
+            span("Tighten", "seventeen", 182.0, "smug"),
+            span("dopamine", "dopamine", 187.0, "heart"),
+            span("eight", "proxies", 191.8, "round"),
+            span("quite", "awake", 207.0, "smug"),
+            span("partners", "code", 209.4, "heart"),
+            span("future", "need", 224.6, "smug"),
+            span("forgot", "ask", 229.4, "round"),
+            span("judgment", "task", 231.1, "smug"),
+            span("brain", "screen", 235.4, "round"),
+            span("still", "still", 243.0, "smug", 0.3)]
+
+
 # ---------------------------------------------------------------- the parts
 class Part:
     """One performance clip. intensity: [(time, level)] keyframes (0.2 nearly still, 0.45 chill,
@@ -468,15 +573,22 @@ class Part:
     stomp on kicks and the right hand comes down on snares. sway_end: the verse head sway fades
     out here. jumps: [(takeoff, landing, height)]. spins/freezes/stiff: functions of the words
     giving [(start, end, turns)], [(start, end)] and [(start, end)] (snappy robot arms).
-    legs: False for a figure in a skirt (no knee bends or stomps). sedation: [(time, 0..1)]
+    legs: "adult", "kid" (short legs) or None for a figure in a skirt (no knee bends or stomps).
+    arms: False for an armless figure (the snare pops its head instead). faces: for a screen
+    face (v9), [(start, end, expression)] from the words. sedation: [(time, 0..1)]
     keyframes; sedated = lazier springs, weaker reactions to the beat, a drooping head. lids:
     [(time, notch)] eyelid drops (see lipsync_demo.animate_lids), or None for ordinary blinks.
     calm: 0..1, how composed the performer is overall: 1 = small, smooth, slow motion (beat
-    reactions, joint speed, turning and head sway all scaled down)."""
+    reactions, joint speed, turning and head sway all scaled down). rock: (start, end) of
+    rock-singer mode (head-banging on every beat); rock_holds(W): [(start, end)] where the
+    head-banging pauses."""
 
     def __init__(self, figure, span, intensity, chorus, drums, sway_end, gestures, jumps=(),
-                 spins=None, freezes=None, stiff=None, legs=True, sedation=((0, 0.0),), lids=None, calm=0.0):
+                 spins=None, freezes=None, stiff=None, legs="adult", sedation=((0, 0.0),), lids=None, calm=0.0,
+                 arms=True, faces=None, rock=None, rock_holds=None):
+        self.rock, self.rock_holds = rock, rock_holds or (lambda W: [])
         self.legs, self.sedation, self.lids, self.calm = legs, list(sedation), lids, calm
+        self.arms, self.faces = arms, faces or (lambda W: [])
         self.figure, self.span, self.levels = figure, span, intensity
         self.chorus, self.drums, self.sway_end = chorus, drums, sway_end
         self.gestures, self.jumps = gestures, list(jumps)
@@ -533,9 +645,26 @@ PARTS = {
     "bridge": Part(
         "anchor", (129.4, 148.6),
         [(0, 0.2), (134.0, 0.17), (138.6, 0.13), (143.0, 0.08), (147.2, 0.03), (150, 0.02)], calm=1.0,
-        chorus=(1e9, 1e9), drums=(1e9, 1e9), sway_end=1e9, gestures=bridge_gestures, legs=False,
+        chorus=(1e9, 1e9), drums=(1e9, 1e9), sway_end=1e9, gestures=bridge_gestures, legs=None,
         sedation=[(0, 0.0), (133.9, 0.0), (134.5, 0.25), (138.4, 0.25), (139.0, 0.5), (142.8, 0.5),
                   (143.4, 0.75), (147.1, 0.8), (147.8, 1.0)],
         lids=lambda W: [(W.find("Unemployment's", 134.0)["start"], 1), (W.find("Our", 138.5)["start"], 2),
                         (W.find("Now", 142.9)["start"], 3), (W.find("line", 146.0)["start"] + 0.12, 4)]),
+    # Agent Version Nine: verse 3 (EDM building) and chorus 3 (full EDM); no arms, a screen face
+    "v3c3": Part(
+        "v9", (162.6, 245.6),
+        [(0, 0.5), (186.0, 0.65), (190.6, 0.7), (191.5, 1.0), (217.3, 1.0), (217.7, 1.2), (243.6, 1.2),
+         (244.2, 0.4)],
+        chorus=(191.2, 243.8), drums=(191.4, 243.6), sway_end=191.2, gestures=v3c3_gestures,
+        jumps=[(185.45, 185.81, 0.06),          # a hop on "Now lift"
+               (191.08, 191.44, 0.07),          # onto the drop
+               (225.93, 226.29, 0.08),          # rock jumps onto the bar 104 and 108 downbeats
+               (234.63, 234.99, 0.08)],
+        spins=lambda W: [(W.find("Earth", 168.0)["start"] - 0.05, W.find("Earth", 168.0)["start"] + 0.75, 1.0),
+                         (W.find("thumb", 237.4)["start"] - 0.1, W.find("thumb", 237.4)["start"] + 0.7, -1.0)],
+        freezes=lambda W: [(243.7, 246.0)],     # freeze on the bar 112 downbeat
+        stiff=lambda W: [],
+        legs="kid", arms=False, faces=v3c3_faces,
+        rock=(217.59, 243.6),                   # bar 100 to the end: a rock singer
+        rock_holds=lambda W: [(W.find(w, a)["start"] - 0.15, W.find(w, a)["end"] + 0.25) for w, a in V3C3_WAILS]),
 }

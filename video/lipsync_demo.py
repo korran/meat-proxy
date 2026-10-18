@@ -21,6 +21,7 @@ from mathutils import Matrix, Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import style_lab as SL  # noqa: E402  (cast builders)
 
+TAU = 2 * math.pi
 DARK, TEETH, TONGUE, LIP = "#3b1d1d", "#fafafa", "#d9657a", "#e3a98a"
 
 
@@ -189,11 +190,73 @@ def key_visible(objs, frame, visible):
         ob.keyframe_insert("hide_viewport", frame=frame)
 
 
+# v9's mouth is a voice-assistant waveform: a row of bars that bounce with the singing voice.
+# The bars hang from a smile-shaped curve and grow downward, so it always grins; at rest they are
+# a smiling row of dots. Each sound
+# shapes the row: (half width of the active bars, their tallest half height).
+V9_WAVE = {"MBP": (0.05, 0.0), "FV": (0.035, 0.008), "EE": (0.046, 0.011), "EH": (0.04, 0.019),
+           "AH": (0.034, 0.025), "OH": (0.022, 0.02), "OO": (0.012, 0.013)}
+V9_BARS, V9_BAR_W, V9_BAR_MIN = 11, 0.0034, 0.0038
+V9_EYES = ("happy", "round", "heart", "smug")
+
+
+def v9_face(B, c):
+    """v9's screen face: the waveform bars (scaled per frame), eye sets per expression and a
+    blink. Returns (bars, eye sets, blink)."""
+    mz = c - 0.035
+    cap = [(math.cos(a), max(-1.0, min(1.0, 1.6 * math.sin(a)))) for a in (TAU * i / 16 for i in range(16))]
+    bars = []
+    for i in range(V9_BARS):
+        x = -0.05 + 0.1 * i / (V9_BARS - 1)
+        ob = B.decal(f"vwave{i}", cap, x, mz, V9_BAR_W, 0.01, SL.V9_INK, SL.V9_SCREEN, 0.001)
+        # move the origin to the top of the bar and hang it from the smile curve, so scaling it in
+        # z grows it downward
+        centre = sum((v.co for v in ob.data.vertices), Vector()) / len(ob.data.vertices)
+        top = centre + Vector((0, 0, 0.01))
+        for v in ob.data.vertices:
+            v.co -= top
+        ob.location = (top.x, top.y, v9_smile(c, x))
+        bars.append(ob)
+    eyes = {k: SL.v9_eyes(B, c, k, name=f"veye_{k}") for k in V9_EYES}
+    blink = SL.v9_eyes(B, c, "closed", name="vblink")
+    return bars, eyes, blink
+
+
+def v9_smile(c, x):
+    """Height of the smile curve the waveform bars hang from (corners turned up)."""
+    return c - 0.022 + 6.0 * x * x
+
+
+def animate_wave(bars, frames):
+    """v9's mouth per frame: each bar's length set by the sound's shape, the voice's loudness and
+    a lively wobble (rising fast, falling a little slower); at rest, a smiling row of dots."""
+    h = [V9_BAR_MIN] * len(bars)
+    for i, fr in enumerate(frames):
+        v = fr["v"]
+        singing = v != "rest" and v in V9_WAVE
+        w, top = V9_WAVE.get(v, (0.05, 0.0))
+        loud = 0.55 + 0.6 * min(1.0, fr.get("level", 0.5))
+        for j, ob in enumerate(bars):
+            x = -0.05 + 0.1 * j / (len(bars) - 1)
+            env = math.sqrt(max(0.0, 1 - (x / (w + 0.004)) ** 2)) if singing else 0.0
+            wob = 0.6 + 0.4 * abs(math.sin(j * 2.7 + i * 0.37 + math.sin(i * 0.11 + j)))
+            target = max(V9_BAR_MIN, top * env * wob * loud)
+            h[j] += (target - h[j]) * (0.7 if target > h[j] else 0.35)
+            ob.scale = (1.0, 1.0, 1.7 * h[j] / 0.02)    # bar length 1.7 x the half height
+            ob.keyframe_insert("scale", frame=i + 1)
+
+
 def singing_figure(B, sc, who="manager"):
     """Build a figure with swappable mouths: the Manager, the Founder (the Manager ten years
     later: visor instead of eyes, phone in his left hand) or the Anchor (cue cards in her left
     hand, lipstick, droppable eyelids in B.lids). Returns (top, head pivot, mouths, eyes, blink);
     eyes and blink are empty for the Founder."""
+    B.lids, B.eyesets, B.wave = [], {}, []
+    if who == "v9":
+        SL.build_v9(B, face=False)
+        top = SL.FIG["z_kid"] + SL.FIG["torso_h"]
+        B.wave, B.eyesets, blink = v9_face(B, top + 0.13)
+        return _head_pivot(B, sc, top, {}, [], blink)
     {"founder": SL.build_founder, "anchor": SL.build_anchor}.get(who, SL.build_manager)(B, mouth=False)
     top = SL.FIG["z_adult"] + SL.FIG["torso_h"]
     c = top + 0.12
@@ -205,6 +268,11 @@ def singing_figure(B, sc, who="manager"):
     B.lids = build_lids(B, eyes_c, cyl) if who == "anchor" else []
     blink = [] if who == "founder" else [
         B.decal(f"blink{s}", "bar", 0.036 * s, eyes_c + 0.007, 0.016, 0.0035, "eye", cyl, 0.0012) for s in (-1, 1)]
+    return _head_pivot(B, sc, top, mouths, None, blink)
+
+
+def _head_pivot(B, sc, top, mouths, eyes, blink):
+    """Hang everything above the shoulders off a head pivot. eyes=None: find the printed eyes."""
     # everything above the shoulders hangs off a head pivot, so the head can nod and sway
     bpy.context.view_layer.update()
     head = bpy.data.objects.new("head_pivot", None)
@@ -218,7 +286,8 @@ def singing_figure(B, sc, who="manager"):
         if centre.z > top + 0.004:
             ob.parent = head
             ob.matrix_parent_inverse = inv
-    eyes = [ob for ob in head.children if ob.name.startswith(("eye", "glint", "lash"))]
+    if eyes is None:
+        eyes = [ob for ob in head.children if ob.name.startswith(("eye", "glint", "lash"))]
     return top, head, mouths, eyes, blink
 
 
@@ -234,6 +303,25 @@ def animate_mouths(mouths, frames):
             for name, objs in mouths.items():
                 key_visible(objs, i + 1, name == fr["v"])
             prev = fr["v"]
+
+
+def animate_faces(eyesets, blink, faces, n, fps, start, default="happy"):
+    """Screen eyes (v9): the expression set by faces [(start, end, name)] (default otherwise),
+    with a blink (- -) every few seconds."""
+    shut, t = [], start + 1.5
+    while t < start + n / fps:
+        shut.append((t, t + 0.1))
+        t += 3.1 + 1.1 * math.sin(t * 5.1) ** 2
+    prev = None
+    for i in range(n):
+        t = start + i / fps
+        face = next((name for a, b, name in faces if a <= t < b), default)
+        state = "blink" if any(a <= t < b for a, b in shut) else face
+        if state != prev:
+            key_visible(blink, i + 1, state == "blink")
+            for name, objs in eyesets.items():
+                key_visible(objs, i + 1, name == state)
+            prev = state
 
 
 def animate_blinks(eyes, blink, n, fps):

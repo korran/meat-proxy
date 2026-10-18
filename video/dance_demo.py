@@ -52,8 +52,9 @@ import lipsync_demo as LS  # noqa: E402
 import style_lab as SL  # noqa: E402
 from dance_moves import PARTS, R, TAU, Lf, Words, arm, noise, smooth  # noqa: E402
 
-THIGH, SHIN = 0.10, 0.14            # adult leg: hip to knee, knee to floor
+THIGH, SHIN = 0.10, 0.14            # leg: hip to knee, knee to floor (set per figure in main)
 LEG = THIGH + SHIN
+LEG_DIMS = {"adult": (0.10, 0.14, SL.FIG["z_adult"]), "kid": (0.045, 0.09, SL.FIG["z_kid"])}
 P = PARTS["v1c1"]                   # the part being performed (set from --part in main)
 
 # spring per channel: (frequency Hz, damping ratio). Lower frequency = heavier, lazier.
@@ -237,6 +238,20 @@ def head_sway(t, B):
     return side * (1 - 2 * go + settle)
 
 
+def head_bang(t, B):
+    """Rock-singer head-bang: the head lifts a little before each beat, snaps down exactly on
+    it, and springs back. 1 = fully down. Harder on beats 1 and 3."""
+    k, ph, bar, bi, blen = B.at(t)
+    dp = ph * blen                    # seconds since the beat
+    dn = (1 - ph) * blen              # seconds to the next one
+    strong = 1.0 if bi in (0, 2) else 0.7
+    nxt = 1.0 if (bi + 1) % 4 in (0, 2) else 0.7
+    if dn < 0.07:                     # snapping down onto the next beat
+        return nxt * (-0.25 + 1.25 * (1 - dn / 0.07) ** 2)
+    up = -0.25 * smooth((0.22 - dn) / 0.15) * nxt if dn < 0.22 else 0.0
+    return strong * math.exp(-dp / 0.13) + up
+
+
 def stomps(hits, J, times, fps):
     """Foot lift per leg per frame: in the chorus a foot comes down exactly on every kick, the feet
     alternating. Returns ([lift0, lift1], impact frames)."""
@@ -310,11 +325,13 @@ def spring_track(target, f, z, fps, impulses=None, forces=None, stiff=None, sub=
 
 # ---------------------------------------------------------------- build and bake
 def main():
-    global P
+    global P, THIGH, SHIN, LEG
     A = LS.parse_args(lambda ap: (ap.add_argument("--lyrics", required=True),
                                   ap.add_argument("--music", required=True),
                                   ap.add_argument("--part", default="v1c1", choices=sorted(PARTS))))
     P = PARTS[A.part]
+    THIGH, SHIN, hip_z = LEG_DIMS[P.legs or "adult"]
+    LEG = THIGH + SHIN
     D = json.load(open(A.visemes))
     Ly = json.load(open(A.lyrics))
     M = json.load(open(A.music))
@@ -548,7 +565,10 @@ def main():
     for i, t in enumerate(times):
         te = next((a for a, b in FZ if a <= t <= b + 0.1), t)   # frozen mid-beat, hand and all
         o = snare_hit(te, snares)
-        if o:   # struck down = arm lowers and the elbow opens; lifted = the reverse
+        if o and not P.arms:   # no arms: the chest dips and the head pops to one side instead
+            S["lean"][i] += 0.06 * o
+            S["hy"][i] += 0.12 * max(0.0, o) * (1 if bisect.bisect_left(snares, te + 0.2) % 2 else -1)
+        elif o:   # struck down = arm lowers and the elbow opens; lifted = the reverse
             S[f"sx{R}"][i] += 0.38 * o
             S[f"el{R}"][i] += 0.7 * o
             S["lean"][i] += 0.05 * o          # the chest dips into the hit
@@ -570,6 +590,16 @@ def main():
     for i, t in enumerate(times):  # a small nod into each snare hit
         S["hx"][i] += 0.05 * max(0.0, snare_hit(next((a for a, b in FZ if a <= t <= b + 0.1), t), snares))
         S["hx"][i] += 0.15 * P.sedated(t)       # sedated: the head droops
+    if P.rock:   # rock-singer head-banging, exact to the beat (paused while it wails a held note)
+        a, b = P.rock
+        holds = P.rock_holds(W)
+        for i, t in enumerate(times):
+            w = smooth((t - a) / 0.5) * (1 - smooth((t - b) / 0.3))
+            w *= 1 - max((smooth((t - h0) / 0.12) * (1 - smooth((t - h1) / 0.2)) for h0, h1 in holds), default=0.0)
+            if w > 0:
+                hb = head_bang(t, B)
+                S["hx"][i] += 0.3 * w * hb
+                S["lean"][i] += 0.07 * w * hb
     S["hx"] = [0.55 * math.tanh(v / 0.55) for v in S["hx"]]  # neck limit
 
     # 5. build the figure and bake
@@ -579,17 +609,16 @@ def main():
     Bld = SL.Builder("fig", sc.collection)
     top, head, mouths, eyes, blink = LS.singing_figure(Bld, sc, P.figure)
     legs = Bld.legs[-2:]
-    shoulders = {s: find_empty(f"shoulder{s}") for s in (R, Lf)}
+    shoulders = {s: find_empty(f"shoulder{s}") for s in (R, Lf)} if P.arms else {}
     for sh in shoulders.values():
         sh.rotation_mode = SHOULDER_ORDER
-    elbows = {s: find_empty(f"elbow{s}") for s in (R, Lf)}
+    elbows = {s: find_empty(f"elbow{s}") for s in (R, Lf)} if P.arms else {}
     root = bpy.data.objects.new("root", None)
     sc.collection.objects.link(root)
     for ob in list(sc.collection.objects):
         if ob is not root and ob.parent is None and ob.type in ("MESH", "CURVE", "FONT", "EMPTY"):
             ob.parent = root
     bpy.context.view_layer.update()
-    hip_z = SL.FIG["z_adult"]
     chest = bpy.data.objects.new("chest", None)
     sc.collection.objects.link(chest)
     chest.parent = root
@@ -607,8 +636,13 @@ def main():
             ob.matrix_parent_inverse = inv
     SL.fig_baseplate(Bld, nx=16, ny=11)
 
-    LS.animate_mouths(mouths, frames)
-    if P.lids:
+    if Bld.wave:   # v9: a waveform mouth
+        LS.animate_wave(Bld.wave, frames)
+    else:
+        LS.animate_mouths(mouths, frames)
+    if Bld.eyesets:
+        LS.animate_faces(Bld.eyesets, blink, P.faces(W), n, fps, start)
+    elif P.lids:
         LS.animate_lids(eyes, blink, Bld.lids, P.lids(W), n, fps, start)
     else:
         LS.animate_blinks(eyes, blink, n, fps)
@@ -632,7 +666,7 @@ def main():
         root.keyframe_insert("rotation_euler", frame=f)
         chest.rotation_euler = (-S["lean"][i], S["croll"][i], S["cyaw"][i])
         chest.keyframe_insert("rotation_euler", frame=f)
-        for s in (R, Lf):
+        for s in shoulders:
             shoulders[s].rotation_euler = (S[f"sx{s}"][i], -(SL.ARM_SLOPE + S[f"sab{s}"][i]) * s, S[f"sz{s}"][i] * s)
             shoulders[s].keyframe_insert("rotation_euler", frame=f)
             elbows[s].rotation_euler.x = min(0.05, S[f"el{s}"][i])
