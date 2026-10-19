@@ -671,6 +671,24 @@ def drone_pose(t):
     return tuple(p0.lerp(p1, f)), tuple(g0.lerp(g1, f)), l0 + (l1 - l0) * f
 
 
+def split_screen_pass(sc, layer):
+    """Set the scene up for one of the two passes of the iPad screen (see --pass)."""
+    scr = bpy.data.objects["ipad_screen"]
+    em = next(n for n in scr.data.materials[0].node_tree.nodes if n.type == "EMISSION")
+    if layer == "main":                     # the screen goes dark; its glow light stays
+        em.inputs["Strength"].default_value = 0.0
+        return
+    em.inputs["Strength"].default_value = 1.0
+    for ob in bpy.data.objects:
+        if ob.type in ("MESH", "CURVE", "FONT") and ob is not scr:
+            ob.is_holdout = True            # in front of the screen: blocks it; elsewhere: black
+    sc.world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.0
+    sc.render.film_transparent = True
+    sc.view_settings.view_transform = "Standard"
+    sc.view_settings.look = "None"
+    sc.view_settings.exposure = 0.0
+
+
 def setup_render(sc, res, preview):
     sc.render.engine = "BLENDER_EEVEE_NEXT"
     sc.render.resolution_y = res
@@ -702,6 +720,10 @@ def main():
     ap.add_argument("--fly", action="store_true")
     ap.add_argument("--screen", help="the cyberspace shot, for the iPad (its first frame at --screen-start)")
     ap.add_argument("--screen-start", type=float, default=162.6)
+    ap.add_argument("--pass", dest="layer", default="main", choices=("main", "screen"),
+                    help="main: the shot, the iPad screen dark (its light still on the room); screen: only the "
+                         "screen, on black, in plain sRGB (so its pixels are the video's own), everything else a "
+                         "holdout; the two are added together in assembly")
     A = ap.parse_args(argv)
     res = A.res or (540 if A.preview or A.flat else 1080)
     sc = bpy.context.scene
@@ -717,6 +739,8 @@ def main():
     T = drone_path()[-1][0]
     cam = camera(sc, *drone_path()[0][1:])
     cam.data.clip_start = 0.01
+    if A.screen:
+        split_screen_pass(sc, A.layer)
     if A.fly:
         n = int(round(T * fps))
         animate_lapse(S, sc, SHOT_START, n, fps)
@@ -731,7 +755,12 @@ def main():
         sc.frame_start, sc.frame_end, sc.render.fps = 1, n, fps
         sc.render.image_settings.file_format = "FFMPEG"
         sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MPEG4", "H264"
-        sc.render.filepath = os.path.join(A.out, "drone.mp4")
+        if A.layer == "screen":     # lossless, so the screen's pixels stay the video's exactly
+            sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
+            sc.render.image_settings.color_mode = "RGB"
+            sc.render.filepath = os.path.join(A.out, "drone_screen.mkv")
+        else:
+            sc.render.filepath = os.path.join(A.out, "drone.mp4")
         bpy.ops.render.render(animation=True)
         return
     t0, t1 = TL
