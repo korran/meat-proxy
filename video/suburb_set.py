@@ -254,7 +254,10 @@ def build_fence(K, x0, y0, x1, y1):
 
 
 # ---------------------------------------------------------------- the house we enter
-def build_interior(B, col, hx, hy):
+IPAD_SCREEN = (0.32, 0.18, 0.105)     # the iPad's screen: width, height (16:9, the frame's shape), centre height
+
+
+def build_interior(B, col, hx, hy, screen_video=None, screen_offset=0):
     """Inside the target house (front wall at hy, facing -y): a wood floor and a rug, the User on
     the sofa against the back wall facing the window, their toddler on the rug facing the iPad
     (its back to the window), the iPad on a stand facing the toddler, a lamp."""
@@ -286,18 +289,23 @@ def build_interior(B, col, hx, hy):
     pad.location = (ipad[0], ipad[1], 2 * PL + 0.04)
     pad.rotation_euler.x = -0.32                                            # leaning back
     K = Kit(B)
-    K.box(-0.17, 0.0, 0.0, 0.17, 0.018, 0.25, "#1b1d22")
+    sw, sh, sz = IPAD_SCREEN
+    K.box(-sw / 2 - 0.02, 0.0, sz - sh / 2 - 0.02, sw / 2 + 0.02, 0.018, sz + sh / 2 + 0.02, "#1b1d22")
     body = K.build("ipad_body")
     body.parent = pad
-    scr = picture(col, "ipad_screen", image_material("ipad_img", os.path.join(TEX, "ipad_v9.png"), 1.6),
-                  (0, -0.001, 0.125), (0.31, 0.22), "-y")
+    if screen_video:   # the cyberspace shot itself, in sync (the push-in lands on it, then cuts to it)
+        from office_set import movie_material
+        mat = movie_material("ipad_img", screen_video, screen_offset, 1.5)   # (brighter: it goes through this shot's look again)
+    else:
+        mat = image_material("ipad_img", os.path.join(TEX, "ipad_v9.png"), 1.6)
+    scr = picture(col, "ipad_screen", mat, (0, -0.001, sz), (sw, sh), "-y")
     scr.parent = pad
     glow = bpy.data.lights.new("ipadglow", "AREA")
     glow.energy, glow.size, glow.color = 3.0, 0.25, (0.75, 0.7, 1.0)
     go = bpy.data.objects.new("ipadglow", glow)
     col.objects.link(go)
     go.parent = pad
-    go.location = (0, -0.05, 0.125)
+    go.location = (0, -0.05, sz)
     go.rotation_euler.x = math.pi / 2
     return {"user": user, "toddler": tod, "ipad": pad, "screen": scr}
 
@@ -349,7 +357,7 @@ def textures():
 
 
 # ---------------------------------------------------------------- the set
-def build(sc, seed=8):
+def build(sc, seed=8, screen_video=None, screen_offset=0):
     textures()
     col = sc.collection
     B = SL.Builder("fig", col)
@@ -367,7 +375,7 @@ def build(sc, seed=8):
                     is_target = (bx, by, lot, row) == TARGET
                     ob, (hx, hy, face, wall) = build_house(B, bx, by, lot, row, rng, interior=is_target)
                     if is_target:
-                        interior = build_interior(B, col, hx, hy)
+                        interior = build_interior(B, col, hx, hy, screen_video, screen_offset)
                     if bx < ZONE_COLS:
                         rb = build_rubble(B, f"rubble_{bx}_{by}_{lot}_{row}", [wall, "#8a8f99", "#6b4a2e"],
                                           bx * 100 + by * 10 + lot * 2 + row)
@@ -424,7 +432,7 @@ def set_sun(sc, elev, rot):
 
 # ---------------------------------------------------------------- the time-lapse
 SPEED_DECAY, SPEED_RATIO = 0.12, 60.0
-EASE_TIME, EASE_END = 1.0, 0.3              # ...easing in over the last second to 30% speed      # the drone's speed curve (see _drone_table)
+EASE_TIME, EASE_END = 1.6, 0.015            # ...easing in over the last 1.6 s almost to a stop (the screen fills the frame)
 TL = (0.0, 9.0)            # time-lapse (s from the shot's start): houses go, datacenters rise
 TL_FROM = 0.25              # ...already this far along when the shot starts (much of it rubble)
 
@@ -503,9 +511,13 @@ def ipad_screen():
     _, (hx, hy) = target_window()
     a = -0.32
     base = Vector(((hx + 10.5) * P, (hy + 6.6) * P, 2 * PL + 0.04))
-    centre = base + Vector((0, -0.001 * math.cos(a) - 0.125 * math.sin(a), -0.001 * math.sin(a) + 0.125 * math.cos(a)))
+    sz = IPAD_SCREEN[2]
+    centre = base + Vector((0, -0.001 * math.cos(a) - sz * math.sin(a), -0.001 * math.sin(a) + sz * math.cos(a)))
     normal = Vector((0, -math.cos(a), -math.sin(a)))
     return centre, normal
+
+
+IPAD_FILL = IPAD_SCREEN[0] / 2 * 36 / 18      # the distance at which (with a 36 mm lens) the screen fills the frame
 
 
 def drone_path():
@@ -524,7 +536,7 @@ def drone_path():
         (10.4, tuple(win + Vector((-0.5, -4.2, 1.5))), tuple(win), 30),
         (11.6, tuple(win + Vector((0.0, -1.0, 0.08))), tuple(far), 32),
         (13.3, tuple(over), tuple(far), 34),
-        (SHOT_LEN, tuple(ipad + nrm * 0.2), tuple(far), 36),
+        (SHOT_LEN, tuple(ipad + nrm * IPAD_FILL), tuple(far), 36),     # the screen exactly fills the frame
     ]
 
 
@@ -632,6 +644,17 @@ def _drone_table(n=6000):
     pos = [r[0] for r in raw]
     dirs = [d.normalized() for d in smooth(smooth([r[1] for r in raw], 0.8, False), 0.8, False)]
     lens = smooth(smooth([r[2] for r in raw], 0.5, False), 0.5, False)
+    # the last second: aim and zoom lock exactly onto the screen (square on, filling the frame), so
+    # the final frames match the cyberspace shot it cuts to
+    ipad_c, ipad_n = ipad_screen()
+    far = ipad_c - ipad_n * 2.5
+    for j in range(N):
+        u = min(1.0, max(0.0, (j / rate - (T - 1.0)) / 0.8))
+        u = u * u * (3 - 2 * u)
+        if u > 0:
+            exact = (far - pos[j]).normalized()
+            dirs[j] = dirs[j].lerp(exact, u).normalized()
+            lens[j] = lens[j] + (36.0 - lens[j]) * u
     return [j / rate for j in range(N)], [(p, p + d, l) for p, d, l in zip(pos, dirs, lens)]
 
 
@@ -677,12 +700,14 @@ def main():
     ap.add_argument("--flat", action="store_true")
     ap.add_argument("--only")
     ap.add_argument("--fly", action="store_true")
+    ap.add_argument("--screen", help="the cyberspace shot, for the iPad (its first frame at --screen-start)")
+    ap.add_argument("--screen-start", type=float, default=162.6)
     A = ap.parse_args(argv)
     res = A.res or (540 if A.preview or A.flat else 1080)
     sc = bpy.context.scene
     for ob in list(bpy.data.objects):
         bpy.data.objects.remove(ob)
-    S = build(sc)
+    S = build(sc, screen_video=A.screen, screen_offset=int(round((A.screen_start - SHOT_START) * 60)))
     setup_render(sc, res, A.preview)
     if A.flat:
         import lipsync_demo as LS
