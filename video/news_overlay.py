@@ -467,6 +467,50 @@ def lower_third(ticker=()):
     return g
 
 
+TICK_SIZE, TICK_SPEED = 0.56, 3.8         # scroller text size, crawl speed (units/s)
+TICK_X = (-5.6, 6.5)                       # the visible span: from the logo block to the clock
+TICK_Y = -4.31
+
+
+def ticker_lines(lines, end):
+    """The lyrics crawl right to left through the scroller, a line at a time, each word lit up
+    amber while it's sung. The logo block and the clock (in front) mask the ends."""
+    x0, x1 = TICK_X
+    for ln in lines:
+        words = [w for w in ln["words"]]
+        g = group("tickline", x1, TICK_Y)
+        x = 0.0
+        objs = []
+        for w in words:
+            ob = text(w["text"].replace("\u2019", "'").strip(), TICK_SIZE, x, 0, WHITE, BOLD, parent=g, own=True,
+                      z=0.005)
+            objs.append((ob, w))
+            x += width_of(ob) + TICK_SIZE * 0.28
+        # it enters from the right shortly before it's sung, so each word is mid-bar when it's sung
+        t_a = ln["start"] - (x1 - x0) * 0.3 / TICK_SPEED
+        t_b = t_a + (x1 - x0 + x + 0.5) / TICK_SPEED
+        if t_a - EPS > SG.T0:            # (a line already crawling when the clip starts is just there)
+            key(g, SG.T0, scale=0.0)
+            key(g, t_a - EPS, scale=0.0)
+        key(g, t_a, loc=(x1, TICK_Y), scale=1.0)
+        key(g, t_b, loc=(x1 - TICK_SPEED * (t_b - t_a), TICK_Y), scale=1.0)
+        key(g, t_b + EPS, scale=0.0)
+        for i, (ob, w) in enumerate(objs):
+            nxt = words[i + 1]["start"] if i + 1 < len(words) else w["end"]
+            SG.key_color(ob, SG.T0, WHITE)
+            SG.key_color(ob, w["start"], AMBER)
+            SG.key_color(ob, max(nxt, w["start"] + 0.12), WHITE)
+
+
+def linear(name_prefix):
+    """Constant-speed motion for the objects named name_prefix* (after ease_all)."""
+    for ob in bpy.data.objects:
+        if ob.name.startswith(name_prefix) and ob.animation_data and ob.animation_data.action:
+            for fc in ob.animation_data.action.fcurves:
+                for kp in fc.keyframe_points:
+                    kp.interpolation = "LINEAR"
+
+
 def headline(body, t_in=None, t_out=None):
     hl_g = group("headline", -3.25, -3.22)
     hl = text(body, 0.66, 0, -0.24, NAVY, BLACK, parent=hl_g, z=0.02)
@@ -569,7 +613,15 @@ def build(lyrics, start, end):
         box_tab(box, label, t_in, t_out)
         c = fn(box, ln, t_in, t_out)
         flip(c, t_in, t_out, 0.22)
+    ticker_lines(lines, end)
     SG.ease_all()
+    linear("tickline")
+    for ob in bpy.data.objects:          # (and they appear and vanish at once)
+        if ob.name.startswith("tickline") and ob.animation_data:
+            for fc in ob.animation_data.action.fcurves:
+                if fc.data_path == "scale":
+                    for kp in fc.keyframe_points:
+                        kp.interpolation = "CONSTANT"
     camera(sc)
 
 
