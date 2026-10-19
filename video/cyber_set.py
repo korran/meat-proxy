@@ -579,39 +579,30 @@ def phone_holos(col, video, offset):
     return out
 
 
-def animate_phones(phones, sched, cam_pose, start, n, fps):
-    """Each graphic gets its own spot in the world: when it opens, its phone is placed beside v9
-    (PHONE_X along the camera's right, on its side) for where the camera is in the middle of the
-    graphic's time, facing that view; it stays there while it's up, folds away at the end, and
-    the next graphic unfolds wherever the camera will need it."""
-    from mathutils import Vector
+def animate_phones(phones, plan, start, fps):
+    """Pose the phones from cyber_shot.plan_phones: each graphic's phone sits at its own spot in
+    the world (fitted to the free space the camera will have halfway through its life), unfolds
+    there, stays put, and folds away; the next graphic unfolds wherever it's planned."""
     f = lambda t: max(1, int(round((t - start) * fps)) + 1)
-    centre = Vector((0, 0, PHONE_Z))
     for side, root in phones.items():
-        s = -1 if side == "L" else 1
-        spans = [(t_in, t_out + 0.5) for ln, t_in, t_out, lf, rf in sched if (lf if side == "L" else rf)]
+        root.rotation_mode = "QUATERNION"
         root.scale = (1e-4, 1, 1e-4)
         root.keyframe_insert("scale", frame=1)
-        for a, b in spans:
-            tm = (a + b) / 2
-            loc, tgt, lens = cam_pose(tm)
-            fwd = (tgt - loc).normalized()
-            right = fwd.cross(Vector((0, 0, 1)))
-            right = right.normalized() if right.length > 1e-4 else Vector((1, 0, 0))
-            up = right.cross(fwd).normalized()
-            p = centre + right * (s * PHONE_X) + up * 0.05
-            root.location = p
-            root.rotation_euler = (loc - p).to_track_quat("-Y", "Z").to_euler()
-            root.keyframe_insert("location", frame=f(a) - 1 if f(a) > 1 else 1)   # (jumps while folded)
-            root.keyframe_insert("rotation_euler", frame=f(a) - 1 if f(a) > 1 else 1)
-            for t, sc in ((a - 0.02, (1e-4, 1, 1e-4)), (a + 0.12, (1.0, 1, 0.04)), (a + 0.32, (1.0, 1, 1.0)),
-                          (b - 0.3, (1.0, 1, 1.0)), (b - 0.12, (1.0, 1, 0.04)), (b, (1e-4, 1, 1e-4))):
-                root.scale = sc
+        for content, a, b, loc, rot, height, scr in plan:
+            if content != side:
+                continue
+            k = height / PHONE_H
+            root.location, root.rotation_quaternion = loc, rot
+            root.keyframe_insert("location", frame=max(1, f(a) - 1))       # (jumps while folded)
+            root.keyframe_insert("rotation_quaternion", frame=max(1, f(a) - 1))
+            for t, (sx, sz) in ((a - 0.02, (1e-4, 1e-4)), (a + 0.12, (1.0, 0.04)), (a + 0.32, (1.0, 1.0)),
+                                (b - 0.3, (1.0, 1.0)), (b - 0.12, (1.0, 0.04)), (b, (1e-4, 1e-4))):
+                root.scale = (k * sx, k, k * sz)
                 root.keyframe_insert("scale", frame=f(t))
         if root.animation_data:
             for fc in root.animation_data.action.fcurves:
                 for kp in fc.keyframe_points:
-                    kp.interpolation = "CONSTANT" if fc.data_path != "scale" else "LINEAR"
+                    kp.interpolation = "LINEAR" if fc.data_path == "scale" else "CONSTANT"
 
 
 # ---------------------------------------------------------------- the set

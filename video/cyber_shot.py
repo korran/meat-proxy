@@ -49,7 +49,11 @@ WAYPOINTS = [
     (245.6, 620, 8, 6.0, 30, 0.45),          # pulling away
 ]
 ORBIT = 0.6                  # the chorus orbit, slowed: this fraction of the waypoints' turning
-WAYPOINTS = [(t, (az if t <= CHORUS else -8 + ORBIT * (az + 8)), el, d, ln, tz)
+# ...and its height and in/out moves moderated (toward eye level, a steady distance and lens)
+CALM_EL, CALM_D, CALM_LENS = 0.4, 0.4, 0.5
+WAYPOINTS = [(t, az, el, d, ln, tz) if t <= CHORUS else
+             (t, -8 + ORBIT * (az + 8), 8 + CALM_EL * (el - 8), 3.0 + CALM_D * (d - 3.0), 34 + CALM_LENS * (ln - 34),
+              0.5 + 0.5 * (tz - 0.5))
              for t, az, el, d, ln, tz in WAYPOINTS]
 SENSOR_W, SENSOR_H = 36.0, 20.25           # the camera's sensor (16:9, fit horizontally)
 
@@ -221,6 +225,11 @@ def _place_world(root, local, s, t_in, t_out, f):
             kp.interpolation = "LINEAR"
 
 
+def lyrics_top(t):
+    """Whether lyrics at time t sit in the top band (v9's middle low in the frame)."""
+    return screen_y(t, (0, 0, 0.45)) < 0.0
+
+
 def place_lyrics(col, lines, start, end, fps, cam=None, phones=None):
     """phones: [(t_in, t_out, left shown, right shown)] (the phone holograms); stacked phrases
     go on a side without a phone, and become a row if both are up."""
@@ -291,3 +300,70 @@ def place_lyrics(col, lines, start, end, fps, cam=None, phones=None):
                 if fc.data_path in ('["lit"]', '["hl"]'):
                     for kp in fc.keyframe_points:
                         kp.interpolation = "LINEAR"
+
+
+# ---------------------------------------------------------------- phone holograms: where they go
+V9_BOX = [(x, y, z) for x in (-0.16, 0.16) for y in (-0.1, 0.1) for z in (0.0, 0.9)]   # her bounds
+PHONE_ASPECT = 3 / 4                      # width / height
+
+
+def _tan(M, p):
+    """World point p -> (tan x, tan y, depth) in the camera at M."""
+    c = M.inverted() @ Vector(p)
+    d = max(1e-4, -c.z)
+    return c.x / d, c.y / d, d
+
+
+def plan_phones(sched, lyric_band_top):
+    """Where each graphic's phone goes. For each graphic (its lifetime a..b), at the camera as it
+    will be halfway through: the free space left and right of v9, outside the lyric band; the
+    phone is fitted as big as it goes into its side (a lone graphic takes the roomier side), at
+    v9's depth, facing that camera, and stays there in the world. sched: [(line, t_in, t_out,
+    left fn, right fn)]; lyric_band_top(t) -> True if that line's lyrics sit at the top.
+    Returns [(content side, a, b, location, rotation quaternion, world height, screen side)]."""
+    out = []
+    last_side = "L"                                 # (so the first lone graphic opens on the right)
+    for ln, t_in, t_out, lf, rf in sched:
+        a, b = t_in, t_out + 0.5
+        tm = (a + b) / 2
+        M, lens = cam_matrix(tm)
+        hx, hy = SENSOR_W / 2 / lens, SENSOR_H / 2 / lens          # the frame's half extents (tan)
+        pts = [_tan(M, p) for p in V9_BOX]
+        vx0, vx1 = min(p[0] for p in pts), max(p[0] for p in pts)
+        depth = sum(p[2] for p in pts) / len(pts)
+        top = lyric_band_top(tm)
+        y0, y1 = (-0.94 * hy, 0.46 * hy) if top else (-0.46 * hy, 0.94 * hy)   # (clear of the lyrics)
+        margin = 0.04 * hx
+        regions = {"L": (-0.96 * hx, min(vx0 - margin, 0.9 * hx)), "R": (max(vx1 + margin, -0.9 * hx), 0.96 * hx)}
+
+        def fit(side):
+            x0, x1 = regions[side]
+            w, h = max(0.0, x1 - x0), y1 - y0
+            ph = min(0.94 * h, 0.94 * w / PHONE_ASPECT)
+            return ph, ((x0 + x1) / 2, (y0 + y1) / 2)
+        wanted = [s for s, fn in (("L", lf), ("R", rf)) if fn]
+        if len(wanted) == 1:                        # a lone graphic: the other side from the last one
+            last_side = "R" if last_side == "L" else "L"
+            wanted_slots = [last_side]
+        else:                                       # one each side (never side by side)
+            wanted_slots = wanted
+        # facing that camera: the phone's front (-y) toward it, its top (+z) up the frame
+        rot = (M.to_3x3() @ Matrix.Rotation(-math.pi / 2, 3, "X")).to_quaternion()
+        for content, scr in zip(wanted, wanted_slots):
+            ph, (cx, cy) = fit(scr)
+            ph = max(ph, 0.25 * hy)
+            loc = M @ Vector((cx * depth, cy * depth, -depth))
+            out.append((content, a, b, loc, rot, ph * depth, scr))
+            if os.environ.get("PHONE_REPORT"):
+                print("PHONE %6.1f %s->%s %-16s %.0f%% tall, x %.2f..%.2f (v9 %.2f..%.2f)" % (
+                    tm, content, scr, getattr(lf if content == "L" else rf, "__name__", "?"), 100 * ph / (2 * hy),
+                    (cx - ph * PHONE_ASPECT / 2) / hx, (cx + ph * PHONE_ASPECT / 2) / hx, vx0 / hx, vx1 / hx))
+    # a phone can't fold away after its next graphic has started opening: end each graphic just
+    # before the next one on the same phone
+    out.sort(key=lambda p: p[1])
+    fixed = []
+    for i, p in enumerate(out):
+        nxt = next((q[1] for q in out[i + 1:] if q[0] == p[0]), None)
+        b = p[2] if nxt is None else min(p[2], nxt - 0.08)
+        fixed.append((p[0], p[1], b) + tuple(p[3:]))
+    return fixed

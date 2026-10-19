@@ -815,11 +815,12 @@ def main():
 
     if cyber:   # the 3D glass lyrics, placed for the camera
         import cyber_shot as CY
-        ph = [(a_, b_ + 0.5, bool(l_), bool(r_)) for _, a_, b_, l_, r_ in cyber.get("sched", [])]
+        plan = CY.plan_phones(cyber.get("sched", []), CY.lyrics_top) if cyber.get("phones") else []
+        ph = [(a_, b_, scr == "L", scr == "R") for _, a_, b_, _, _, _, scr in plan]     # by screen side
         CY.place_lyrics(sc.collection, [ln for ln in Ly["lines"] if start <= ln["start"] < end], start, end, fps, cam,
                         phones=ph)
-        if cyber.get("phones"):
-            CS.animate_phones(cyber["phones"], cyber["sched"], CY.cam_pose, start, n, fps)
+        if plan:
+            CS.animate_phones(cyber["phones"], plan, start, fps)
     if os.environ.get("DANCE_DUMP"):  # motion curves for checking timing outside Blender
         json.dump({"t": times, "root_z": root_z, **S}, open(os.environ["DANCE_DUMP"], "w"))
         return
