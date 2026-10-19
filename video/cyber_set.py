@@ -470,6 +470,150 @@ def animate_holo(root, mat, t_in, t_out, start, fps, seed=0):
             lev.keyframe_insert("default_value", frame=f(t + dt))
 
 
+# ---------------------------------------------------------------- phone holograms
+PHONE_W, PHONE_H = 0.42, 0.56           # a phone hologram (3:4), world units
+PHONE_X = 0.6                           # how far either side of v9 (along the camera's right)
+PHONE_Z = 0.5                           # their centre height
+
+
+def phone_mesh(name, side, r=0.045, seg=6):
+    """A rounded-rectangle phone screen, its UVs on its half of the screen_v3 video (left
+    screen on the left half)."""
+    import screen_v3 as S3
+    w, h = PHONE_W, PHONE_H
+    pts = []
+    for cx, cy, a0 in ((w / 2 - r, h / 2 - r, 0), (-w / 2 + r, h / 2 - r, 90), (-w / 2 + r, -h / 2 + r, 180),
+                       (w / 2 - r, -h / 2 + r, 270)):
+        for i in range(seg + 1):
+            a = math.radians(a0 + 90 * i / seg)
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([(x, 0, z) for x, z in pts], [], [tuple(range(len(pts)))])
+    uv = me.uv_layers.new()
+    cx = S3.CX[side]
+    for loop in me.loops:
+        x, z = pts[loop.vertex_index]
+        sx = cx + x / w * S3.SW                       # in screen_v3's scene units
+        sy = z / h * S3.SH
+        uv.data[loop.index].uv = ((sx + S3.FRAME_W / 2) / S3.FRAME_W, (sy + S3.FRAME_H / 2) / S3.FRAME_H)
+    return me
+
+
+def phone_frame(name, r=0.05, seg=6, t=0.008):
+    """A thin glowing outline round a phone."""
+    w, h = PHONE_W + 0.016, PHONE_H + 0.016
+    def ring(w, h, r):
+        pts = []
+        for cx, cy, a0 in ((w / 2 - r, h / 2 - r, 0), (-w / 2 + r, h / 2 - r, 90), (-w / 2 + r, -h / 2 + r, 180),
+                           (w / 2 - r, -h / 2 + r, 270)):
+            for i in range(seg + 1):
+                a = math.radians(a0 + 90 * i / seg)
+                pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+        return pts
+    o, i_ = ring(w, h, r), ring(w - 2 * t, h - 2 * t, r - t)
+    n = len(o)
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([(x, 0.001, z) for x, z in o] + [(x, 0.001, z) for x, z in i_], [],
+                   [(k, (k + 1) % n, n + (k + 1) % n, n + k) for k in range(n)])
+    return me
+
+
+def phone_material(video, offset):
+    """The phone screen: the video, glowing, almost opaque, faint scanlines."""
+    m = bpy.data.materials.new("phone")
+    m.use_nodes = True
+    m.surface_render_method = "BLENDED"
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = bpy.data.images.load(video, check_existing=True)
+    tex.image.source = "MOVIE"
+    iu = tex.image_user
+    iu.frame_duration = tex.image.frame_duration
+    iu.frame_start, iu.frame_offset, iu.use_auto_refresh = 1 + offset, 0, True
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["UV"], sep.inputs[0])
+    sl = nt.nodes.new("ShaderNodeMath")
+    sl.operation = "SINE"
+    k = nt.nodes.new("ShaderNodeMath")
+    k.operation = "MULTIPLY"
+    k.inputs[1].default_value = 1400.0
+    nt.links.new(sep.outputs["Y"], k.inputs[0])
+    nt.links.new(k.outputs[0], sl.inputs[0])
+    sc_ = nt.nodes.new("ShaderNodeMapRange")
+    sc_.inputs["From Min"].default_value, sc_.inputs["From Max"].default_value = -1.0, 1.0
+    sc_.inputs["To Min"].default_value, sc_.inputs["To Max"].default_value = 1.2, 1.5
+    nt.links.new(sl.outputs[0], sc_.inputs["Value"])
+    em = nt.nodes.new("ShaderNodeEmission")
+    nt.links.new(tex.outputs["Color"], em.inputs["Color"])
+    nt.links.new(sc_.outputs[0], em.inputs["Strength"])
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    mix.inputs["Fac"].default_value = 0.9
+    nt.links.new(tr.outputs[0], mix.inputs[1])
+    nt.links.new(em.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    return m
+
+
+def phone_holos(col, video, offset):
+    """The two phone holograms (left and right of v9). Returns {side: (root, frame material)}."""
+    mat = phone_material(video, offset)
+    out = {}
+    for side, colr in (("L", PINK), ("R", CYAN)):
+        root = bpy.data.objects.new(f"phone{side}", None)
+        col.objects.link(root)
+        me = phone_mesh(f"phone{side}_screen", side)
+        me.materials.append(mat)
+        scr = bpy.data.objects.new(f"phone{side}_screen", me)
+        col.objects.link(scr)
+        scr.parent = root
+        fm = phone_frame(f"phone{side}_frame")
+        fm.materials.append(emission(f"phone{side}_glow", colr, 5.0))
+        fr = bpy.data.objects.new(f"phone{side}_frame", fm)
+        col.objects.link(fr)
+        fr.parent = root
+        out[side] = root
+    return out
+
+
+def animate_phones(phones, sched, cam_pose, start, n, fps):
+    """Each graphic gets its own spot in the world: when it opens, its phone is placed beside v9
+    (PHONE_X along the camera's right, on its side) for where the camera is in the middle of the
+    graphic's time, facing that view; it stays there while it's up, folds away at the end, and
+    the next graphic unfolds wherever the camera will need it."""
+    from mathutils import Vector
+    f = lambda t: max(1, int(round((t - start) * fps)) + 1)
+    centre = Vector((0, 0, PHONE_Z))
+    for side, root in phones.items():
+        s = -1 if side == "L" else 1
+        spans = [(t_in, t_out + 0.5) for ln, t_in, t_out, lf, rf in sched if (lf if side == "L" else rf)]
+        root.scale = (1e-4, 1, 1e-4)
+        root.keyframe_insert("scale", frame=1)
+        for a, b in spans:
+            tm = (a + b) / 2
+            loc, tgt, lens = cam_pose(tm)
+            fwd = (tgt - loc).normalized()
+            right = fwd.cross(Vector((0, 0, 1)))
+            right = right.normalized() if right.length > 1e-4 else Vector((1, 0, 0))
+            up = right.cross(fwd).normalized()
+            p = centre + right * (s * PHONE_X) + up * 0.05
+            root.location = p
+            root.rotation_euler = (loc - p).to_track_quat("-Y", "Z").to_euler()
+            root.keyframe_insert("location", frame=f(a) - 1 if f(a) > 1 else 1)   # (jumps while folded)
+            root.keyframe_insert("rotation_euler", frame=f(a) - 1 if f(a) > 1 else 1)
+            for t, sc in ((a - 0.02, (1e-4, 1, 1e-4)), (a + 0.12, (1.0, 1, 0.04)), (a + 0.32, (1.0, 1, 1.0)),
+                          (b - 0.3, (1.0, 1, 1.0)), (b - 0.12, (1.0, 1, 0.04)), (b, (1e-4, 1, 1e-4))):
+                root.scale = sc
+                root.keyframe_insert("scale", frame=f(t))
+        if root.animation_data:
+            for fc in root.animation_data.action.fcurves:
+                for kp in fc.keyframe_points:
+                    kp.interpolation = "CONSTANT" if fc.data_path != "scale" else "LINEAR"
+
+
 # ---------------------------------------------------------------- the set
 def textures():
     """Placeholder hologram pictures (the real ones come from the verse 3 graphics)."""

@@ -674,6 +674,10 @@ def main():
         cyber = CS.build(sc, v9=False, holos=False)
         CS.animate_cubes(cyber["cubes"], n, fps)
         CS.animate_leds(cyber["leds"], n, fps)
+        if A.screen:     # the phone holograms beside her (screen_v3.py's video)
+            import screen_v3 as S3
+            cyber["sched"] = S3.schedule(Ly)
+            cyber["phones"] = CS.phone_holos(sc.collection, A.screen, int(round((A.screen_start - start) * fps)))
     elif A.set == "news":    # in the SINN studio, the Dyson sphere assembling behind her
         import news_set as NS
         spot = NS.anchor_spot()
@@ -811,7 +815,11 @@ def main():
 
     if cyber:   # the 3D glass lyrics, placed for the camera
         import cyber_shot as CY
-        CY.place_lyrics(sc.collection, [ln for ln in Ly["lines"] if start <= ln["start"] < end], start, end, fps, cam)
+        ph = [(a_, b_ + 0.5, bool(l_), bool(r_)) for _, a_, b_, l_, r_ in cyber.get("sched", [])]
+        CY.place_lyrics(sc.collection, [ln for ln in Ly["lines"] if start <= ln["start"] < end], start, end, fps, cam,
+                        phones=ph)
+        if cyber.get("phones"):
+            CS.animate_phones(cyber["phones"], cyber["sched"], CY.cam_pose, start, n, fps)
     if os.environ.get("DANCE_DUMP"):  # motion curves for checking timing outside Blender
         json.dump({"t": times, "root_z": root_z, **S}, open(os.environ["DANCE_DUMP"], "w"))
         return

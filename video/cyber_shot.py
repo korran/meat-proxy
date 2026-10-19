@@ -221,7 +221,9 @@ def _place_world(root, local, s, t_in, t_out, f):
             kp.interpolation = "LINEAR"
 
 
-def place_lyrics(col, lines, start, end, fps, cam=None):
+def place_lyrics(col, lines, start, end, fps, cam=None, phones=None):
+    """phones: [(t_in, t_out, left shown, right shown)] (the phone holograms); stacked phrases
+    go on a side without a phone, and become a row if both are up."""
     """Build and animate every line between start and end (song seconds), half a line at a
     time: each half either as one row in the band away from v9, or (short halves, when there's
     room) its words stacked one under another beside her."""
@@ -243,12 +245,19 @@ def place_lyrics(col, lines, start, end, fps, cam=None):
             vx = screen_x(tm, (0, 0, 0.45))
             vy = screen_y(tm, (0, 0, 0.45))
             bodies = [_clean(w) for w in ws]
-            stack = len(ws) <= 5 and abs(vx) < 0.4 and count % 2 == 1
+            up = [(l_, r_) for a_, b_, l_, r_ in (phones or []) if a_ <= tm <= b_]
+            busy_l = any(l_ for l_, _ in up)
+            busy_r = any(r_ for _, r_ in up)
+            stack = len(ws) <= 5 and abs(vx) < 0.4 and count % 2 == 1 and not (busy_l and busy_r)
             count += 1
             name = f"ly{k}_{h}"
             if stack:
                 # words one under another, on the side away from her (or alternating if she's centred)
                 side = -1 if vx > 0.08 else 1 if vx < -0.08 else (1 if k % 2 else -1)
+                if busy_l:
+                    side = 1
+                elif busy_r:
+                    side = -1
                 size = 0.1 * fh
                 rows = []
                 for i, b in enumerate(bodies):
