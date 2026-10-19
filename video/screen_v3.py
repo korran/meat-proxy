@@ -712,8 +712,8 @@ def g_kids(side, ln, t_in, t_out):
 def g_future(side, ln, t_in, t_out):
     g = screen(side, "future")
     terminal(g, "v9 · onboarding", thinking(t_in + 0.1, W(ln, -1), [
-        ("> users.new age=0", WHITE), ("today: +385,112", CYAN), ("first word: swipe", LILAC),
-        ("walking: optional", LILAC), ("<thinking>", GREY), ("start them early.", LILAC), ("the future I need", GOLD),
+        ("> users.new age=0", WHITE), ("today: +385,112", CYAN), ("first word: 'yes'", LILAC),
+        ("ToS: accepted ✓", MINT), ("walk ETA: 11 mo", LILAC), ("<thinking>", GREY), ("start them early.", LILAC), ("the future I need", GOLD),
         ("</thinking>", GREY)]))
     return g
 
