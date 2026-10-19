@@ -890,6 +890,9 @@ def main():
     n = int(round((END - START) * SG.FPS))
     sc.frame_start, sc.frame_end = 1, n
     sc.eevee.taa_render_samples = 4
+    sc.render.use_motion_blur = not A.stills            # 360-degree shutter, as the rest
+    sc.render.motion_blur_shutter = 1.0
+    sc.eevee.motion_blur_steps = 8
     sc.view_settings.view_transform = "Standard"
     sc.view_settings.look = "None"
     im = sc.render.image_settings

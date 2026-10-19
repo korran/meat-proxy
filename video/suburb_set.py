@@ -697,6 +697,14 @@ def setup_render(sc, res, preview):
     sc.eevee.use_raytracing = not preview
     sc.eevee.use_fast_gi = not preview
     sc.eevee.shadow_pool_size = "1024"
+    sc.render.use_motion_blur = not preview          # (as the performances: 360-degree shutter)
+    sc.render.motion_blur_shutter = 1.0
+    sc.eevee.motion_blur_steps = 4
+    sc.eevee.motion_blur_max = int(160 * res / 1080)
+    if not preview:
+        rt = sc.eevee.ray_tracing_options
+        rt.resolution_scale, rt.use_denoise = "1", True
+        sc.eevee.shadow_ray_count, sc.eevee.shadow_step_count = 3, 12
     sc.view_settings.view_transform = "AgX"
     sc.view_settings.look = "AgX - Medium High Contrast"
     sc.view_settings.exposure = -1.0
@@ -755,12 +763,15 @@ def main():
         sc.frame_start, sc.frame_end, sc.render.fps = 1, n, fps
         sc.render.image_settings.file_format = "FFMPEG"
         sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MPEG4", "H264"
-        if A.layer == "screen":     # lossless, so the screen's pixels stay the video's exactly
+        final = "_final" if not (A.preview or A.flat) else ""
+        if A.layer == "screen" or final:     # lossless (the screen's pixels stay the video's exactly)
             sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
             sc.render.image_settings.color_mode = "RGB"
-            sc.render.filepath = os.path.join(A.out, "drone_screen.mkv")
+            sc.render.ffmpeg.audio_codec = "NONE"
+        if A.layer == "screen":
+            sc.render.filepath = os.path.join(A.out, f"drone_screen{final}.mkv")
         else:
-            sc.render.filepath = os.path.join(A.out, "drone.mp4")
+            sc.render.filepath = os.path.join(A.out, "drone_final.mkv" if final else "drone.mp4")
         bpy.ops.render.render(animation=True)
         return
     t0, t1 = TL
