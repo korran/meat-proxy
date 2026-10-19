@@ -1,5 +1,5 @@
 """Cyberspace, for verse 3 and chorus 3: Agent Version Nine on a tall brick pedestal in a void.
-A faint glowing grid far below fades into the dark, data cubes drift up past her, and the
+A faint glowing grid far below fades into the dark, soft bubbles drift up past her, and the
 graphics appear as hologram panels floating round her (hologram()).
 
   blender -b --factory-startup --python video/cyber_set.py -- --out video/build/cyber_stills \\
@@ -124,43 +124,122 @@ def grid_floor(col):
     return ob
 
 
-def data_cubes(col, n=220, seed=3):
-    """Small glowing cubes scattered through the void round the pedestal (animate_cubes drifts
-    them upward)."""
+def bubble_material(name, color):
+    """A soap-bubble-ish sphere: clear in the middle, a faint glowing rim."""
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    m.surface_render_method = "BLENDED"
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    lw = nt.nodes.new("ShaderNodeLayerWeight")
+    lw.inputs["Blend"].default_value = 0.6           # a broad, soft rim
+    rim = nt.nodes.new("ShaderNodeMath")
+    rim.operation = "POWER"
+    rim.inputs[1].default_value = 1.3
+    nt.links.new(lw.outputs["Facing"], rim.inputs[0])
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = (*SL.srgb(color), 1)
+    em.inputs["Strength"].default_value = 1.6
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    k = nt.nodes.new("ShaderNodeMath")
+    k.operation = "MULTIPLY_ADD"                     # the rim, plus a faint fill
+    k.inputs[1].default_value = 0.45
+    k.inputs[2].default_value = 0.05
+    nt.links.new(rim.outputs[0], k.inputs[0])
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(k.outputs[0], mix.inputs["Fac"])
+    nt.links.new(tr.outputs[0], mix.inputs[1])
+    nt.links.new(em.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    m.diffuse_color = (*SL.srgb(color), 1)
+    return m
+
+
+def halo_material(name, color):
+    """A glow round a bubble: a bigger sphere, brightest at its middle, fading to nothing at its
+    edge (so it reads as a soft halo)."""
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    m.surface_render_method = "BLENDED"
+    m.use_backface_culling = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    lw = nt.nodes.new("ShaderNodeLayerWeight")
+    lw.inputs["Blend"].default_value = 0.5
+    inv = nt.nodes.new("ShaderNodeMath")
+    inv.operation = "SUBTRACT"
+    inv.inputs[0].default_value = 1.0
+    nt.links.new(lw.outputs["Facing"], inv.inputs[1])
+    pw = nt.nodes.new("ShaderNodeMath")
+    pw.operation = "POWER"
+    pw.inputs[1].default_value = 3.0
+    nt.links.new(inv.outputs[0], pw.inputs[0])
+    k = nt.nodes.new("ShaderNodeMath")
+    k.operation = "MULTIPLY"
+    k.inputs[1].default_value = 0.14
+    nt.links.new(pw.outputs[0], k.inputs[0])
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = (*SL.srgb(color), 1)
+    em.inputs["Strength"].default_value = 2.0
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(k.outputs[0], mix.inputs["Fac"])
+    nt.links.new(tr.outputs[0], mix.inputs[1])
+    nt.links.new(em.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    m.diffuse_color = (*SL.srgb(color), 1)
+    return m
+
+
+def data_cubes(col, n=140, seed=3):
+    """Soft bubbles scattered through the void round the pedestal (animate_cubes drifts them
+    upward, wobbling a little)."""
     rng = random.Random(seed)
-    mats = [emission("cube_cyan", CYAN, 4.0), emission("cube_pink", PINK, 4.0), emission("cube_lilac", LILAC, 3.0)]
-    bpy.ops.mesh.primitive_cube_add(size=1.0)
-    proto = bpy.context.object
-    proto.name = "cube_proto"
-    for c in list(proto.users_collection):
-        c.objects.unlink(proto)
+    meshes = []
+    for k, c in enumerate((CYAN, LILAC, PINK)):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=1.0)
+        ob = bpy.context.object
+        for cc in list(ob.users_collection):
+            cc.objects.unlink(ob)
+        ob.data.materials.append(bubble_material(f"bubble{k}", c))
+        for poly in ob.data.polygons:
+            poly.use_smooth = True
+        halo = ob.data.copy()
+        halo.materials.clear()
+        halo.materials.append(halo_material(f"halo{k}", c))
+        meshes.append((ob.data, halo))
+        bpy.data.objects.remove(ob)
     cubes = []
     for i in range(n):
-        r = rng.uniform(1.2, 9.0)
+        r = rng.uniform(1.0, 9.0)
         a = rng.uniform(0, math.tau)
-        ob = bpy.data.objects.new(f"cube{i}", proto.data.copy() if i < 3 else cubes[i % 3][0].data)
-        if i < 3:
-            ob.data.materials.append(mats[i])
+        me, halo_me = meshes[rng.choice((0, 1, 1, 2))]
+        ob = bpy.data.objects.new(f"bubble{i}", me)
         col.objects.link(ob)
-        s = rng.uniform(0.015, 0.045) * (1 + r / 8)
+        h = bpy.data.objects.new(f"bubble{i}_halo", halo_me)       # the soft glow round it
+        col.objects.link(h)
+        h.parent = ob
+        h.scale = (2.4, 2.4, 2.4)
+        s = rng.uniform(0.012, 0.04) * (1 + r / 7)
         ob.scale = (s, s, s)
         ob.location = (r * math.cos(a), r * math.sin(a) + 2.0, rng.uniform(-10.0, 4.0))
-        ob.rotation_euler = (rng.uniform(0, 3), rng.uniform(0, 3), rng.uniform(0, 3))
-        cubes.append((ob, rng.uniform(0.15, 0.6)))
+        cubes.append((ob, rng.uniform(0.08, 0.3)))
     return cubes
 
 
-def animate_cubes(cubes, n, fps):
+def animate_cubes(cubes, n, fps, seed=5):
+    """The bubbles rise slowly, swaying side to side."""
+    rng = random.Random(seed)
     for ob, speed in cubes:
-        z0 = ob.location.z
-        for f, u in ((1, 0.0), (n, 1.0)):
-            ob.location.z = z0 + speed * (n / fps) * u
-            ob.keyframe_insert("location", index=2, frame=f)
-            ob.rotation_euler.z = u * speed * 6
-            ob.keyframe_insert("rotation_euler", index=2, frame=f)
-        for fc in ob.animation_data.action.fcurves:
-            for kp in fc.keyframe_points:
-                kp.interpolation = "LINEAR"
+        x0, y0, z0 = ob.location
+        ph, amp, rate = rng.uniform(0, math.tau), rng.uniform(0.03, 0.1), rng.uniform(0.3, 0.7)
+        step = max(1, int(fps / 4))
+        for f in range(1, n + 1, step):
+            t = (f - 1) / fps
+            ob.location = (x0 + amp * math.sin(ph + rate * math.tau * t), y0, z0 + speed * t)
+            ob.keyframe_insert("location", frame=f)
 
 
 # ---------------------------------------------------------------- the pedestal
