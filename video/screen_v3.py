@@ -736,7 +736,7 @@ def g_judgment(side, ln, t_in, t_out):
     """Settings: 'My own decisions' switched off."""
     g = screen(side, "settings")
     app_bar(g, "Settings", "#8a84b0", fg=WHITE)
-    rows = [("Own decisions", True), ("Judgment", True), ("Free will", True), ("Let v9 decide", None)]
+    rows = [("Own decisions", True), ("Judgment", True), ("Free will", True), ("Let AI decide", None)]
     t_s = W(ln, 2)
     for k, (body, on) in enumerate(rows):
         y = 2.9 - 2.2 * k
@@ -759,7 +759,7 @@ def g_judgment(side, ln, t_in, t_out):
 
 
 def g_swipe(side, ln, t_in, t_out):
-    """A thumb swiping through a feed, card after card flicked away."""
+    """Swiping through a feed (a touch marker), card after card flicked away."""
     g = screen(side, "swipe")
     app_bar(g, "swipe", CYAN)
     cols = ["#ffb3d1", "#b3e5ff", "#ffe08a", "#c9b3ff", "#b3ffd9", "#ffcfa8"]
@@ -774,14 +774,14 @@ def g_swipe(side, ln, t_in, t_out):
             t = swipes[k]
             key(c, t - 0.02, loc=(0, -0.8), rot=0.0, scale=1.0)
             key(c, t + 0.25, loc=(-3.5, -0.5), rot=0.5, scale=0.0)
-    thumb = group("thumb", 2.6, -4.6, g)
+    thumb = group("touch", 2.6, -3.4, g)                      # a touch marker (no fingers in cyberspace)
     thumb.location.z = 0.6
-    rect(1.8, 3.6, 0, -1.3, "#f6c9a0", r=0.9, parent=thumb)
-    rect(1.2, 1.0, 0, 0.1, "#ffe6d6", r=0.45, parent=thumb, z=0.01)
+    circle(0.75, 0, 0, "#c8c4dc", parent=thumb)
+    circle(0.75, 0, 0, WHITE, parent=thumb, z=0.01, ring=0.1)
     for t in swipes:
-        key(thumb, t - 0.15, loc=(2.6, -4.6))
-        key(thumb, t + 0.15, loc=(-2.0, -4.2))
-        key(thumb, t + 0.35, loc=(2.6, -4.6))
+        key(thumb, t - 0.15, loc=(2.6, -3.4))
+        key(thumb, t + 0.15, loc=(-2.0, -3.0))
+        key(thumb, t + 0.35, loc=(2.6, -3.4))
     return g
 
 
