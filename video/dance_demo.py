@@ -335,7 +335,7 @@ def main():
     A = LS.parse_args(lambda ap: (ap.add_argument("--lyrics", required=True),
                                   ap.add_argument("--music", required=True),
                                   ap.add_argument("--part", default="v1c1", choices=sorted(PARTS)),
-                                  ap.add_argument("--set", default="none", choices=("none", "office", "yacht"),
+                                  ap.add_argument("--set", default="none", choices=("none", "office", "yacht", "news"),
                                                   help="perform inside a built set (before the part starts, "
                                                        "the set's intro camera runs)"),
                                   ap.add_argument("--screen", help="video for the set's big screen (screen_graphics.py)"),
@@ -657,7 +657,7 @@ def main():
         if zc > hip_z - 0.015 and not ob.name.startswith(("hip", "knee")):
             ob.parent = chest
             ob.matrix_parent_inverse = inv
-    office, yacht, spot = None, None, (0.0, 0.0, 0.0)
+    office, yacht, news, spot = None, None, None, (0.0, 0.0, 0.0)
     if A.set == "office":   # stand on the office stage; build the room around him
         import office_set as OS
         spot = OS.manager_spot()
@@ -668,6 +668,11 @@ def main():
         office = OS.build(sc, manager=False, screen_video=A.screen,
                           screen_offset=int(round((A.screen_start - start) * fps)))
         OS.animate_terminals(office["terminals"], n, fps)
+    elif A.set == "news":    # in the SINN studio, the Dyson sphere assembling behind her
+        import news_set as NS
+        spot = NS.anchor_spot()
+        news = NS.build(sc, anchor=False)
+        NS.animate_globes(news["globes"], n, fps)
     elif A.set == "yacht":   # on the aft deck of his third yacht; the LED wall rises behind him
         import yacht_set as YS
         spot = YS.founder_spot()
@@ -743,7 +748,12 @@ def main():
             ang += 0.35 * math.sin(TAU * (t - c0) / 26.0) * smooth((t - c0) / 2.0)
             dist -= 0.15 * smooth((t - c0) / 3.0) * (1 - smooth((t - P.chorus[1]) / 2.0))
         dist -= cam_bump[i]
-        if yacht:   # zoom in from the sea, then the stage shot: aimed at the wall, dollying sideways
+        if news:    # the anchor shot: locked off, with the faintest drift
+            loc, tgt, lens = NS.ANCHOR_VIEW
+            cam.location = (loc[0] + 0.01 * math.sin(tt * 0.21), loc[1], loc[2] + 0.006 * math.sin(tt * 0.33))
+            SL.aim(cam, tgt)
+            cam.data.lens = lens
+        elif yacht:   # zoom in from the sea, then the stage shot: aimed at the wall, dollying sideways
             dz = 0.02 * math.sin(tt * 0.4)            # to move him across it (YS.DOLLY)
             settle = smooth((tt - YS.FLY[-1][0]) / 3.0)
             loc, tgt, lens = YS.stage_pose(YS.side_at(t), YS.STAGE_VIEW[1] - 0.15 * cam_bump[i] * settle,
@@ -791,8 +801,10 @@ def main():
         json.dump({"t": times, "root_z": root_z, **S}, open(os.environ["DANCE_DUMP"], "w"))
         return
     LS.setup_look(sc, fps, n, A.res, A.samples, A.blur_steps, A.shutter, A.preview,
-                  on_set=spot if office or yacht else None)
-    if office or yacht:
+                  on_set=spot if office or yacht or news else None)
+    if news:
+        NS.focus(cam)
+    if office or yacht or news:
         sc.eevee.use_raytracing = sc.eevee.use_fast_gi = not A.preview
     if office:
         OS.preview_lights(A.preview)
