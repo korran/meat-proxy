@@ -670,6 +670,7 @@ def main():
         OS.animate_terminals(office["terminals"], n, fps)
     elif A.set == "cyber":   # on the spire in the void (the holograms come later, with the graphics)
         import cyber_set as CS
+        import cyber_shot as CY
         spot = CS.stage_spot()
         cyber = CS.build(sc, v9=False, holos=False)
         CS.animate_cubes(cyber["cubes"], n, fps)
@@ -736,6 +737,8 @@ def main():
             knee.keyframe_insert("rotation_euler", frame=f)
         root.location = (S["rx"][i], 0.0, root_z[i])
         face = YS.facing_at(t) if yacht else 0.0     # on the yacht: turns to the camera after each dolly
+        if cyber:                                     # in cyberspace: turns to where the camera is heading
+            face = CY.facing_at(t, [ln for ln in Ly["lines"] if start <= ln["start"] < end])
         root.rotation_euler = (0.0, S["roll"][i], S["yaw"][i] + spin[i] + face)
         root.keyframe_insert("location", frame=f)
         root.keyframe_insert("rotation_euler", frame=f)

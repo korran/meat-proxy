@@ -367,3 +367,38 @@ def plan_phones(sched, lyric_band_top):
         b = p[2] if nxt is None else min(p[2], nxt - 0.08)
         fixed.append((p[0], p[1], b) + tuple(p[3:]))
     return fixed
+
+
+# ---------------------------------------------------------------- v9 turning to the camera
+TURN_LEAD = 1.2          # she turns toward where the camera will be this far ahead
+TURN_TIME = 1.0          # each turn takes this long
+
+
+def _cam_azimuth(t, prev=None):
+    """The camera's angle round v9 (radians; 0 = in front of her, -y), unwrapped near prev."""
+    loc, _, _ = cam_pose(t)
+    a = math.atan2(loc.x, -loc.y)
+    if prev is not None:
+        a += math.tau * round((prev - a) / math.tau)
+    return a
+
+
+_FACING = None
+
+
+def facing_at(t, lines):
+    """v9's turn (radians about z) at song time t: at the start of each lyric line she turns
+    (over TURN_TIME, eased) to face where the camera will be TURN_LEAD later, then holds."""
+    global _FACING
+    if _FACING is None:
+        turns, a = [], 0.0
+        for ln in lines:
+            t0 = ln["start"] - 0.3
+            a = _cam_azimuth(t0 + TURN_TIME + TURN_LEAD, a)
+            turns.append((t0, a))
+        _FACING = turns
+    yaw = 0.0
+    for t0, a in _FACING:
+        u = min(1.0, max(0.0, (t - t0) / TURN_TIME))
+        yaw += (a - yaw) * u * u * u * (u * (6 * u - 15) + 10)
+    return yaw
