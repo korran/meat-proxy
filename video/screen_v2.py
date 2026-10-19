@@ -202,11 +202,11 @@ def g_fired(ln, t_out):
     g = group("fired", 0, 0)
     lx = -5.6
     left = group("layoffs", lx, 0, g)
-    label(left, "LAYOFFS", 0, 1.35, 0.36, LILAC, BLACK)
+    label(left, "LAYOFFS", 0, 1.45, 0.6, LILAC, BLACK)
     t_f, t_t, t_p = at(ln, "fired"), at(ln, "thousand"), at(ln, "people")
     vals = ["0", "1,200", "4,800", "9,000", "15,500", "22,000", "28,400", "33,900", "37,600", "39,850", "40,000"]
     times = [t_f + (t_t + 0.35 - t_f) * k / (len(vals) - 1) for k in range(len(vals))]
-    nums = [label(left, v, 0, 0.62, 1.0, CORAL if k == len(vals) - 1 else WHITE, BLACK) for k, v in enumerate(vals)]
+    nums = [label(left, v, 0, 0.55, 1.1, CORAL if k == len(vals) - 1 else WHITE, BLACK) for k, v in enumerate(vals)]
     sequence(nums, times, t_out + 0.3)
     rng = random.Random(3)
     cols = ["#9fb3ff", "#ffd166", "#3ddc97", "#ff9f7a", "#c9a0ff"]
@@ -220,19 +220,19 @@ def g_fired(ln, t_out):
             key_color(parts[1], tg, "#3a4066")
             key_color(parts[0], SG.T0, SKIN)
             key_color(parts[0], tg, "#3a4066")
-    right = group("yachts", 5.6, 0, g)
-    label(right, "FLEET", 0, 1.35, 0.36, LILAC, BLACK)
+    right = group("yachts", 5.4, 0, g)
+    label(right, "FLEET", 0, 1.45, 0.6, LILAC, BLACK)
     t_d, t_3 = at(ln, "deck"), at(ln, "third")
-    for k, (x, lab) in enumerate(((-1.9, "Nº1"), (0.0, "Nº2"), (1.9, "Nº3"))):
-        y = group("y", x, -0.6, right)
-        yacht_icon(y, 0, 0, 0.75, WHITE if k == 2 else "#8790b8")
-        label(y, lab, 0, -0.45, 0.34, YELLOW if k == 2 else LILAC, BLACK)
+    for k, (x, lab) in enumerate(((-2.4, "Nº1"), (0.0, "Nº2"), (2.4, "Nº3"))):
+        y = group("y", x, -0.5, right)
+        yacht_icon(y, 0, 0, 0.95, WHITE if k == 2 else "#8790b8")
+        label(y, lab, 0, -0.6, 0.6, YELLOW if k == 2 else LILAC, BLACK)
         if k < 2:
-            label(y, "✓", 0.0, 1.25, 0.5, MINT, BLACK)
+            label(y, "✓", 0.0, 1.45, 0.7, MINT, BLACK)
         pop_in(y, (t_d if k < 2 else t_3) + 0.12 * k)
-    here = group("here", 1.9, -2.4, right)
-    poly([(0, 0.5), (-0.25, 0.1), (0.25, 0.1)], CORAL, parent=here, z=0.01)
-    label(here, "YOU ARE HERE", 0, -0.2, 0.28, CORAL, BLACK)
+    here = group("here", 1.6, -2.6, right)
+    poly([(0.8, 0.7), (0.5, 0.2), (1.1, 0.2)], CORAL, parent=here, z=0.01)
+    label(here, "YOU ARE HERE", 0, -0.25, 0.55, CORAL, BLACK)
     pop_in(here, t_3 + 0.3)
     show(g, ln["start"] - 0.3, t_out)
 
@@ -241,7 +241,7 @@ def g_replaced(ln, t_out):
     """The crowd flips, one by one, into little agents; on the right, a vibe-coding session."""
     g = group("replaced", 0, 0)
     left = group("swap", -5.6, 0, g)
-    label(left, "HEADCOUNT", 0, 1.35, 0.36, LILAC, BLACK)
+    label(left, "HEADCOUNT", 0, 1.45, 0.6, LILAC, BLACK)
     t_r, t_a = at(ln, "Replaced"), at(ln, "agents")
     rng = random.Random(8)
     for i in range(8):
@@ -263,17 +263,15 @@ def g_replaced(ln, t_out):
             key(bot, SG.T0, scale=(0, 1, 1))
             key(bot, tf + 0.08, scale=(0, 1, 1))
             key(bot, tf + 0.18, scale=(1, 1, 1))
-    right = group("vibe", 5.55, -1.0, g)
-    card(6.2, 5.0, 0, 0, right, color=INK, edge=LINE_BLUE)
-    rect(6.2, 0.45, 0, 2.28, LINE_BLUE, parent=right, z=0.01)
-    for k, col in enumerate((RED, YELLOW, MINT)):
-        circle(0.08, -2.8 + 0.28 * k, 2.28, col, parent=right, z=0.02)
-    label(right, "vibe_code.py", 0.3, 2.28, 0.24, LILAC, MONO)
+    right = group("vibe", 6.4, -0.95, g)          # narrow, at the right edge: clear of the Founder in the fly-in
+    card(4.6, 5.9, 0, 0, right, color=INK, edge=LINE_BLUE)
+    rect(4.6, 0.7, 0, 2.6, LINE_BLUE, parent=right, z=0.01)
+    label(right, "vibe_code.py", 0, 2.6, 0.42, LILAC, MONO)
     t_v = at(ln, "vibe-coded")
-    rows = [("> make me agents", WHITE), ("> no bugs pls", WHITE), ("> make it scale", WHITE),
-            ("✨ vibing...", YELLOW), ("✓ 40,000 agents", MINT), ("✓ shipped", MINT), ("  (untested)", GREY)]
+    rows = [("> make agents", WHITE), ("> no bugs pls", WHITE), ("> make it scale", WHITE),
+            ("~ vibing...", YELLOW), ("✓ 40k agents", MINT), ("✓ shipped", MINT), ("  (untested)", GREY)]
     for k, (body, col) in enumerate(rows):
-        ob = text(body, 0.36, -2.75, 1.45 - 0.55 * k, col, MONO, parent=right, z=0.02)
+        ob = text(body, 0.5, -2.05, 1.65 - 0.66 * k, col, MONO, parent=right, z=0.02)
         pop_in(ob, ln["start"] + 0.3 + 0.42 * k, 0.12)     # from the start of the line: time to read
     show(g, ln["start"] - 0.3, t_out)
 
@@ -290,22 +288,22 @@ def g_senate(ln, t_out):
     for k in range(7):
         rect(0.2, 1.4, -1.5 + 0.5 * k, 0.0, WHITE, parent=left, z=0.01)
     rect(4.2, 0.3, 0, -0.8, WHITE, parent=left, z=0.01)
-    label(left, "U.S. SENATE", 0, -1.45, 0.34, LILAC, BLACK)
+    label(left, "U.S. SENATE", 0, -1.55, 0.6, LILAC, BLACK)
     pop_in(left, at(ln, "Senate") - 0.1)
     t_h = at(ln, "hearing")
     stamp(left, "SUBPOENA", 0.2, 0.4, t_h, RED, 0.48)
-    right = group("signs", 5.6, -1.4, g)
+    right = group("signs", 4.9, -1.4, g)
     t_v, t_w, t_hd = at(ln, "voters"), at(ln, "want"), at(ln, "head")
-    for k, (x, body, t) in enumerate(((-1.95, "A HEAD!", t_v), (0.0, "ONE (1)\nHEAD", t_w), (1.95, "HEADS\nPLS", t_hd))):
+    for k, (x, body, t) in enumerate(((-2.75, "A HEAD!", t_v), (0.0, "ONE (1)\nHEAD", t_w), (2.75, "HEADS\nPLS", t_hd))):
         sg = group("sign", x, 0, right)
         rect(0.1, 2.4, 0, -0.6, "#8a5a3b", parent=sg, z=0.01)
-        card(1.8, 1.5, 0, 0.9, sg, color=PAPER)
-        tx = text(body, 0.34, 0, 1.05, RED, BLACK, align="CENTER", parent=sg, z=0.02)
+        card(2.6, 2.0, 0, 0.9, sg, color=PAPER)
+        text(body, 0.55, 0, 1.15 if "\n" in body else 0.72, RED, BLACK, align="CENTER", parent=sg, z=0.02)
         pop_in(sg, t)
         for m in range(int((t_out - t) / 0.27)):      # bobbing on the beat
             tb = t + 0.3 + 0.27 * m
             key(sg, tb, loc=(x, 0.0 if (m + k) % 2 else 0.18))
-    label(right, "THE VOTERS", 0, -2.35, 0.34, LILAC, BLACK)
+    label(right, "THE VOTERS", 0, -2.35, 0.6, LILAC, BLACK)
     show(g, ln["start"] - 0.3, t_out)
 
 
@@ -315,12 +313,12 @@ def g_sacrifice(ln, t_out):
     r = R()
     cx = r["cx"]
     g = group("sacrifice", 0, 0)
-    case = group("case", cx + 1.5, -1.0, g)
+    case = group("case", cx + 1.5, -1.25, g)
     rect(3.0, 4.4, 0, 0, RED, r=0.12, parent=case, z=0.0)
     rect(2.6, 3.4, 0, -0.3, "#1a2350", r=0.06, parent=case, z=0.01)
-    rect(3.0, 1.0, 0, 2.55, RED, r=0.12, parent=case, z=0.0)
-    label(case, "IN CASE OF HEARING", 0, 2.75, 0.24, WHITE, BLACK, z=0.03)
-    label(case, "BREAK GLASS", 0, 2.38, 0.3, YELLOW, BLACK, z=0.03)
+    rect(4.8, 1.6, 0, 2.75, RED, r=0.12, parent=case, z=0.0)
+    label(case, "IN CASE OF HEARING", 0, 3.1, 0.42, WHITE, BLACK, z=0.03)
+    label(case, "BREAK GLASS", 0, 2.45, 0.58, YELLOW, BLACK, z=0.03)
     kv, legs, _ = kevin(g, cx + 1.5, -2.85, 1.35, z=0.02)
     glass = group("glass", cx + 1.5, -1.3, g)      # see-through: a pale frame and glints over him
     glass.location.z = 0.2
@@ -369,29 +367,29 @@ def g_fuse(ln, t_out):
     r = R()
     cx, w = r["cx"], r["w"]
     g = group("fuse", cx, 0)
-    top = group("top", 0, 1.35, g)
-    card(3.4, 0.7, 0, 0, top, edge=LILAC)
-    label(top, "HOLDCO (me)", 0, 0, 0.32, WHITE, BLACK)
+    top = group("top", 0, 1.45, g)
+    card(4.8, 1.0, 0, 0, top, edge=LILAC)
+    label(top, "HOLDCO (me)", 0, 0, 0.55, WHITE, BLACK)
     pop_in(top, ln["start"] - 0.2)
     divs = ("CLOUD", "ADS", "ROBOTS", "LEGAL")
     sp = min(3.0, (w - 1.0) / 4)
-    rect(sp * 3, 0.06, 0, 0.75, LILAC, parent=g, z=0.005)
-    rect(0.06, 0.6, 0, 1.0, LILAC, parent=g, z=0.005)
+    rect(sp * 3, 0.06, 0, 0.7, LILAC, parent=g, z=0.005)
+    rect(0.06, 0.4, 0, 0.9, LILAC, parent=g, z=0.005)
     t_k, t_d, t_f, t_b = at(ln, "Kevin"), at(ln, "division,"), at(ln, "fuse"), at(ln, "blow,")
     kevs = []
     for k, d in enumerate(divs):
         x = (k - 1.5) * sp
         col = group("div", x, 0, g)
-        rect(0.06, 0.4, 0, 0.55, LILAC, parent=col, z=0.005)
-        card(2.3, 0.6, 0, 0.1, col, color=NAVY2)
-        label(col, d, 0, 0.1, 0.3, LILAC, BLACK)
+        rect(0.06, 0.3, 0, 0.55, LILAC, parent=col, z=0.005)
+        card(2.65, 0.85, 0, 0.0, col, color=NAVY2)
+        label(col, d, 0, 0.0, 0.5, LILAC, BLACK)
         pop_in(col, t_d - 0.3 + 0.1 * k)
         kv, _, _ = kevin(g, x, -2.55, 0.95, z=0.02)
         pop_in(kv, t_k + 0.12 * k)
         kevs.append(kv)
-        tag = group("amp", x, -3.15, g)
-        rect(1.0, 0.36, 0, 0, YELLOW, r=0.06, parent=tag, z=0.03)
-        label(tag, "15A", 0, 0, 0.24, INK, BLACK, z=0.04)
+        tag = group("amp", x, -3.25, g)
+        rect(1.4, 0.65, 0, 0, YELLOW, r=0.08, parent=tag, z=0.03)
+        label(tag, "15A", 0, 0, 0.48, INK, BLACK, z=0.04)
         pop_in(tag, t_f + 0.1 * k)
     wire = rect(sp * 3 + 1.4, 0.07, 0, -1.65, "#c9ced6", parent=g, z=0.001)
     hide_until(wire, t_f)
@@ -435,7 +433,7 @@ def g_throw(ln, t_out):
         rect(1.2, 0.8, 0, -0.2, "#2b2f45", r=0.2, parent=sn, z=0.0)
     card(7.0, 1.4, 0, -0.5, dais, color="#7a4a2a")
     rect(7.0, 0.16, 0, 0.2, "#9a6a3a", parent=dais, z=0.01)
-    label(dais, "SENATE HEARING", 0, -0.55, 0.38, PAPER, BLACK)
+    label(dais, "SENATE HEARING", 0, -0.55, 0.58, PAPER, BLACK)
     pop_in(dais, at(ln, "hearing") - 0.1)
     meter = group("meter", -4.4, -1.3, g)
     rect(0.6, 4.0, 0, 0, WHITE, r=0.3, parent=meter, z=0.0)
@@ -452,7 +450,7 @@ def g_throw(ln, t_out):
         poly([(-0.1, 0), (0.1, 0), (0.0, 0.32)], YELLOW, parent=fl, z=0.03)
         hide_until(fl, t_sp - 0.1 + 0.12 * k)
         pop_in(fl, t_sp - 0.1 + 0.12 * k)
-    label(meter, "SPICY", 0, 2.4, 0.3, RED, BLACK)
+    label(meter, "SPICY", 0, 2.5, 0.6, RED, BLACK)
     pop_in(meter, at(ln, "gets") - 0.15)
     shake(dais, t_sp + 0.1, 0.03, 6)
     t_k, t_th = at(ln, "Kevin"), at(ln, "throw.")
@@ -546,7 +544,7 @@ def g_cheaper(ln, t_out):
     tag = group("tag", 1.6, -0.9, g)
     poly([(-2.8, 1.5), (2.2, 1.5), (3.1, 0.0), (2.2, -1.5), (-2.8, -1.5)], PAPER, parent=tag, z=0.01)
     circle(0.18, 2.3, 0, "#1a2350", parent=tag, z=0.02)
-    label(tag, "KEVIN  (human)", -0.3, 1.0, 0.34, INK, BLACK)
+    label(tag, "KEVIN (human)", -0.3, 0.98, 0.52, INK, BLACK)
     old = label(tag, "$85,000/yr", -0.3, 0.2, 0.62, GREY, BLACK)
     t_c = at(ln, "cheaper")
     strike = rect(3.9, 0.1, -0.3, 0.18, RED, parent=tag, z=0.03)
@@ -558,8 +556,8 @@ def g_cheaper(ln, t_out):
     hide_until(new, at(ln, "time,") - 0.1)
     pop_in(new, at(ln, "time,") - 0.1)
     ban = group("clear", 0.4, 1.75, tag)
-    rect(3.0, 0.5, 0, 0, RED, r=0.08, parent=ban, z=0.04)
-    label(ban, "CLEARANCE", 0, 0, 0.32, WHITE, BLACK, z=0.05)
+    rect(3.6, 0.8, 0, 0, RED, r=0.08, parent=ban, z=0.04)
+    label(ban, "CLEARANCE", 0, 0, 0.52, WHITE, BLACK, z=0.05)
     ban.rotation_euler.z = 0.08
     hide_until(ban, at(ln, "one") - 0.05)
     pop_in(ban, at(ln, "one") - 0.05)
@@ -571,23 +569,22 @@ def g_gig(ln, t_out):
     r = R()
     cx = r["cx"]
     g = group("gig", cx, 0)
-    ph = group("phone", -3.3, -1.05, g)
-    rect(3.3, 5.8, 0, 0, "#0d0f1a", r=0.35, parent=ph, z=0.0)
-    rect(3.0, 5.2, 0, 0, PAPER, r=0.18, parent=ph, z=0.01)
-    rect(3.0, 0.75, 0, 2.2, "#2fbf71", r=0.18, parent=ph, z=0.02)
-    label(ph, "KevinGig", 0, 2.2, 0.36, WHITE, BLACK, z=0.03)
+    ph = group("phone", -3.2, -1.05, g)
+    rect(4.6, 6.0, 0, 0, "#0d0f1a", r=0.4, parent=ph, z=0.0)
+    rect(4.3, 5.7, 0, 0, PAPER, r=0.25, parent=ph, z=0.01)
+    rect(4.3, 0.95, 0, 2.38, "#2fbf71", r=0.25, parent=ph, z=0.02)
+    label(ph, "KevinGig", 0, 2.38, 0.58, WHITE, BLACK, z=0.03)
     t_g, t_c, t_n = at(ln, "gig"), at(ln, "contract,"), at(ln, "ninety")
-    jobs = [("Take the blame", "$0.90", t_g), ("Sign this (don't read)", "$0.90", t_g + 0.3),
-            ("1099 · no benefits", "✓", t_c), ("Testify (Tues)", "$0.90", t_c + 0.3)]
+    jobs = [("Take the blame", "$0.90", t_g), ("Sign. Don't read.", "$0.90", t_g + 0.3), ("No benefits", "✓", t_c)]
     for k, (a, b, t) in enumerate(jobs):
-        jb = group("job", 0, 1.3 - 1.0 * k, ph)
-        rect(2.7, 0.82, 0, 0, WHITE, r=0.1, parent=jb, z=0.03)
-        text(a, 0.2, -1.2, 0.08, INK, SEMI, parent=jb, z=0.04)
-        text(b, 0.24, 1.2, -0.25, "#2fbf71", BLACK, align="RIGHT", parent=jb, z=0.04)
+        jb = group("job", 0, 1.2 - 1.2 * k, ph)
+        rect(4.0, 1.05, 0, 0, WHITE, r=0.12, parent=jb, z=0.03)
+        text(a, 0.44, -1.85, -0.16, INK, BOLD, parent=jb, z=0.04)
+        text(b, 0.44, 1.85, -0.16, "#2fbf71", BLACK, align="RIGHT", parent=jb, z=0.04)
         pop_in(jb, t, 0.18)
-    acc = group("accept", 0, -2.35, ph)
-    rect(2.6, 0.5, 0, 0, "#2fbf71", r=0.25, parent=acc, z=0.03)
-    label(acc, "ACCEPT ALL", 0, 0, 0.26, WHITE, BLACK, z=0.04)
+    acc = group("accept", 0, -2.3, ph)
+    rect(3.8, 0.85, 0, 0, "#2fbf71", r=0.42, parent=acc, z=0.03)
+    label(acc, "ACCEPT ALL", 0, 0, 0.5, WHITE, BLACK, z=0.04)
     pop_in(acc, t_c + 0.5)
     pop_in(ph, ln["start"] - 0.2)
     big = group("rate", 2.6, 0.1, g)
@@ -595,11 +592,11 @@ def g_gig(ln, t_out):
     label(big, "PER CRIME", 0, -1.0, 0.5, WHITE, BLACK)
     hide_until(big, t_n)
     pop_in(big, t_n)
-    tally = group("tally", 2.6, -2.6, g)
-    label(tally, "earned today:", -0.2, 0.0, 0.3, LILAC, SEMI, align="RIGHT")
+    tally = group("tally", 2.9, -2.8, g)
+    label(tally, "earned today:", -0.2, 0.0, 0.5, LILAC, BOLD, align="RIGHT")
     vals = [f"${0.9 * k:.2f}" for k in range(1, 9)]
     t_a = at(ln, "crime,")
-    nums = [text(v, 0.42, 0.0, -0.15, MINT, BLACK, parent=tally) for v in vals]
+    nums = [text(v, 0.62, 0.0, -0.22, MINT, BLACK, parent=tally) for v in vals]
     sequence(nums, [t_a + 0.18 * k for k in range(len(vals))], t_out + 0.3)
     hide_until(tally, t_a)
     key(tally, t_a, scale=1.0)
@@ -607,10 +604,9 @@ def g_gig(ln, t_out):
 
 
 CRIMES = [
-    ("> agent run --goal 'beat Q3'", WHITE), ("✓ bribed 3 regulators", MINT), ("✓ hired a hitman (4.8★)", MINT),
-    ("✓ laundered $2.1M via NFTs", MINT), ("✓ insider trading (vibes)", MINT), ("✓ forged 12 signatures", MINT),
-    ("✓ blackmailed an auditor", MINT), ("✓ deleted the evidence", MINT), ("✓ tax evasion: automated", MINT),
-    ("! 41 more...", YELLOW),
+    ("> agent run 'beat Q3'", WHITE), ("✓ bribed 3 regulators", MINT), ("✓ hired a hitman", MINT),
+    ("✓ laundered $2.1M", MINT), ("✓ blackmailed auditor", MINT), ("✓ deleted evidence", MINT),
+    ("✓ tax evasion", MINT), ("! 43 more...", YELLOW),
 ]
 
 
@@ -620,17 +616,17 @@ def g_crimes(ln, t_out):
     r = R()
     cx = r["cx"]
     g = group("crimes", cx, 0)
-    term = group("term", -1.6, -1.05, g)
-    card(8.6, 5.8, 0, 0, term, color=INK, edge=LINE_BLUE)
-    rect(8.6, 0.45, 0, 2.68, LINE_BLUE, parent=term, z=0.01)
-    label(term, "agent.log", -3.2, 2.68, 0.24, LILAC, MONO)
+    term = group("term", -1.7, -1.05, g)
+    card(8.4, 5.9, 0, 0, term, color=INK, edge=LINE_BLUE)
+    rect(8.4, 0.7, 0, 2.6, LINE_BLUE, parent=term, z=0.01)
+    label(term, "agent.log", 0, 2.6, 0.42, LILAC, MONO)
     t_b, t_h = at(ln, "breaks"), at(ln, "hour,")
     for k, (body, col) in enumerate(CRIMES):
-        ob = text(body, 0.33, -4.0, 2.0 - 0.48 * k, col, MONO, parent=term, z=0.02)
+        ob = text(body, 0.5, -3.9, 1.75 - 0.6 * k, col, MONO, parent=term, z=0.02)
         pop_in(ob, t_b - 0.35 + (t_h + 0.2 - t_b) * k / len(CRIMES), 0.1)
-    cnt = group("count", 4.4, 1.15, g)
-    label(cnt, "LAWS BROKEN", 0, 0.65, 0.28, LILAC, BLACK)
-    label(cnt, "/ HOUR", 0, -0.75, 0.28, LILAC, BLACK)
+    cnt = group("count", 4.4, 1.25, g)
+    label(cnt, "LAWS BROKEN", 0, 0.8, 0.45, LILAC, BLACK)
+    label(cnt, "PER HOUR", 0, -0.85, 0.45, LILAC, BLACK)
     vals = [str(v) for v in (0, 4, 9, 15, 22, 28, 35, 41, 46, 50)]
     nums = [label(cnt, v, 0, -0.05, 0.9, RED if v == "50" else WHITE, BLACK) for v in vals]
     t_f = at(ln, "fifty")
@@ -641,14 +637,14 @@ def g_crimes(ln, t_out):
     kv, _, _ = kevin(g, 4.4, -3.95, 1.0, z=0.05)
     pop_in(kv, t_m - 0.1)
     for k in range(4):
-        bx = group("box", 4.4 + random.Random(k).uniform(-0.2, 0.2), -1.55 + 0.42 * k, g)
+        bx = group("box", 4.4 + random.Random(k).uniform(-0.2, 0.2), -1.55 + 0.6 * k, g)
         bx.location.z = 0.1
-        rect(1.5, 0.4, 0, 0, RED, r=0.05, parent=bx, z=0.0)
-        label(bx, ("FRAUD", "BRIBES", "MURDER", "TAX", "PERJURY", "ARSON")[k], 0, 0, 0.22, WHITE, BLACK)
+        rect(2.2, 0.56, 0, 0, RED, r=0.06, parent=bx, z=0.0)
+        label(bx, ("FRAUD", "BRIBES", "MURDER", "TAX", "PERJURY", "ARSON")[k], 0, 0, 0.4, WHITE, BLACK)
         tk = t_m + 0.2 + 0.3 * k
         key(bx, SG.T0, loc=(bx.location.x, 5.5), scale=0.0)
         key(bx, tk - EPS, loc=(bx.location.x, 5.5), scale=1.0)
-        key(bx, tk + 0.18, loc=(bx.location.x, -1.55 + 0.42 * k))
+        key(bx, tk + 0.18, loc=(bx.location.x, -1.55 + 0.6 * k))
     t_sq = t_m + 0.2 + 0.3 * 3 + 0.18
     key(kv, t_sq, scale=1.0)
     key(kv, t_sq + 0.12, scale=(1.25, 0.75, 1))
@@ -678,11 +674,11 @@ def g_field(ln, t_out):
             key(kv, tp + 0.15, scale=(1.0, 1.1, 1.0), loc=(x, y))
             key(kv, tp + 0.25, scale=1.0)
             n += 1
-    sv = group("value", 6.2, 1.2, g)
+    sv = group("value", 5.9, 1.0, g)
     sv.location.z = 0.3
-    card(4.6, 1.2, 0, 0, sv, color=INK, edge=MINT)
-    label(sv, "SHAREHOLDER VALUE", 0, 0.22, 0.26, LILAC, BLACK, z=0.31)
-    label(sv, "▲ 6,500%", 0, -0.27, 0.42, MINT, BLACK, z=0.31)
+    card(5.8, 1.9, 0, 0, sv, color=INK, edge=MINT)
+    label(sv, "SHAREHOLDER VALUE", 0, 0.42, 0.46, LILAC, BLACK, z=0.31)
+    label(sv, "▲ 6,500%", 0, -0.38, 0.8, MINT, BLACK, z=0.31)
     hide_until(sv, t_s)
     pop_in(sv, t_s)
     show(g, ln["start"] - 0.3, t_out, 0.01)
@@ -698,7 +694,7 @@ def g_grease(ln, t_out):
     rect(4.2, 1.6, 0, 1.7, "#2a1a10", r=0.1, parent=bc, z=0.001)
     front = rect(4.8, 2.0, 0, -0.3, "#6b4226", r=0.15, parent=bc, z=0.3)
     rect(1.0, 0.25, 0, 0.75, GOLD, r=0.05, parent=bc, z=0.31)
-    label(bc, "SEN. ×2", 0, -0.35, 0.4, GOLD, BLACK, z=0.31)
+    label(bc, "SEN. ×2", 0, -0.35, 0.65, GOLD, BLACK, z=0.31)
     pop_in(bc, ln["start"] - 0.2)
     t_g, t_s = at(ln, "Grease"), at(ln, "senators")
     rng = random.Random(21)
@@ -714,20 +710,20 @@ def g_grease(ln, t_out):
     t_w, t_sg = at(ln, "waiver"), at(ln, "signed")
     doc = group("waiver", 3.3, -0.8, g)
     doc.location.z = 0.4
-    rect(3.6, 4.6, 0, 0, PAPER, r=0.1, parent=doc, z=0.0)
-    label(doc, "WAIVER", 0, 1.8, 0.5, INK, BLACK)
-    label(doc, "of all laws, ever", 0, 1.3, 0.24, GREY, ITALIC)
-    for k in range(5):
-        rect(2.8 - 0.6 * (k % 2), 0.07, -1.4, 0.75 - 0.35 * k, "#c9c3b3", anchor="left", parent=doc, z=0.01)
-    rect(2.4, 0.04, 0, -1.4, INK, parent=doc, z=0.01)
+    rect(4.2, 5.0, 0, 0, PAPER, r=0.1, parent=doc, z=0.0)
+    label(doc, "WAIVER", 0, 1.85, 0.75, INK, BLACK)
+    label(doc, "of all laws, ever", 0, 1.05, 0.42, GREY, ITALIC)
+    for k in range(4):
+        rect(3.2 - 0.6 * (k % 2), 0.07, -1.6, 0.4 - 0.35 * k, "#c9c3b3", anchor="left", parent=doc, z=0.01)
+    rect(3.0, 0.04, 0, -1.55, INK, parent=doc, z=0.01)
     key(doc, SG.T0, loc=(10.0, -0.8))
     key(doc, t_w - 0.25, loc=(10.0, -0.8))
     key(doc, t_w + 0.05, loc=(3.3, -0.8))
-    sig = text("Sen. Kevin", 0.42, -1.1, -1.35, "#2a4fb8", SCRIPT, parent=doc, z=0.02)
+    sig = text("Sen. Kevin", 0.62, -1.4, -1.5, "#2a4fb8", SCRIPT, parent=doc, z=0.02)
     key(sig, SG.T0, scale=(0, 1, 1))
     key(sig, t_sg - 0.05, scale=(0, 1, 1))
     key(sig, t_sg + 0.35, scale=(1, 1, 1))
-    stamp(doc, "APPROVED", 0.2, -0.2, t_sg + 0.45, MINT, 0.42, rot=-0.2)
+    stamp(doc, "APPROVED", 0.2, -0.3, t_sg + 0.45, MINT, 0.55, rot=-0.2)
     show(g, ln["start"] - 0.3, t_out)
 
 
@@ -758,14 +754,14 @@ def g_mind(ln, t_out):
     key(lid, t_n + 0.3, loc=(0.9, 1.73 * s + 0.9), rot=-0.5)
     body = group("lab_body", 2.4, -2.6, g)
     poly([(-2.3, 0.0), (-0.6, 0.0)], WHITE, parent=body, width=0.04)
-    label(body, "BODY", 0.6, 0.25, 0.5, WHITE, BLACK)
-    label(body, "✓ KEEP", 0.6, -0.4, 0.4, MINT, BLACK)
+    label(body, "BODY", 0.9, 0.35, 0.75, WHITE, BLACK)
+    label(body, "✓ KEEP", 0.9, -0.55, 0.6, MINT, BLACK)
     hide_until(body, t_b)
     pop_in(body, t_b)
     mind = group("lab_mind", 2.4, 0.4, g)
     poly([(-2.6, -0.2), (-0.7, 0.0)], WHITE, parent=mind, width=0.04)
-    label(mind, "MIND", 0.6, 0.25, 0.5, WHITE, BLACK)
-    label(mind, "✗ NOT REQUIRED", 0.9, -0.4, 0.36, RED, BLACK)
+    label(mind, "MIND", 0.9, 0.35, 0.75, WHITE, BLACK)
+    label(mind, "✗ NOT REQUIRED", 1.6, -0.55, 0.58, RED, BLACK)
     hide_until(mind, t_m - 0.1)
     pop_in(mind, t_m - 0.1)
     show(g, at(ln, "with") - 0.1, t_out)
@@ -780,7 +776,7 @@ def g_felonies(ln, t_out):
     con, _, _ = kevin(g, -4.2, -3.9, 1.7, prison=True)     # 'Mostly felonies': in prison stripes
     cardg = group("card", 1.4, -0.9, g)
     card(8.0, 4.6, 0, 0, cardg, color=INK, edge=LINE_BLUE)
-    label(cardg, "KEVIN · LAST YEAR", 0, 1.7, 0.36, LILAC, BLACK)
+    label(cardg, "KEVIN · LAST YEAR", 0, 1.6, 0.55, LILAC, BLACK)
     t_6, t_mo, t_f = at(ln, "six"), at(ln, "Mostly"), at(ln, "felonies.")
     money = label(cardg, "$100,000+", 0, 0.2, 1.3, MINT, BLACK)
     hide_until(money, t_6)
@@ -813,11 +809,11 @@ def g_felonies(ln, t_out):
 def chrome(lines, beats):
     """A small footer (the top of the wall carries the lyrics): deck title, slide counter, and an
     accent bar pulsing on the half-time beats."""
-    text("INVESTOR UPDATE  ·  LIVE FROM THE YACHT", 0.24, -8.6, -4.33, "#7f8fc8", SEMI)
+    text("INVESTOR UPDATE  ·  LIVE FROM THE YACHT", 0.3, -8.6, -4.36, "#7f8fc8", SEMI)
     for k, ln in enumerate(lines):
         t_a = ln["start"] - 0.35
         t_b = lines[k + 1]["start"] - 0.35 if k + 1 < len(lines) else SG.END + 1
-        c = text(f"SLIDE {k + 31:02d} / 3", 0.24, 8.6, -4.33, "#7f8fc8", SEMI, align="RIGHT")
+        c = text(f"SLIDE {k + 31:02d} / 3", 0.3, 8.6, -4.36, "#7f8fc8", SEMI, align="RIGHT")
         hide_until(c, t_a)
         pop_in(c, t_a, 0.15)
         key(c, t_b - EPS, scale=1.0)
