@@ -6,7 +6,7 @@ one-word captions.
   blender -b --factory-startup --python video/wake_set.py -- --out video/build/wake_stills \\
       [--preview] [--res 1080] [--only open,phone]
   ... -- --fly --screen video/build/wake_phone.mkv [--preview] [--pass main|screen] [--patch A,B]
-                                     the whole shot (song 245.6 .. 269.56)
+                                     the whole shot (song 245.6 .. 259.2)
 
 The world: Kevin lies on his back in bed, head toward +y, face up. His upper body is a normal
 minifig (built facing -y, standing), turned to lie down, so its arm poses work as usual; only his
@@ -297,11 +297,11 @@ def camera_rig(sc, kev):
 
 
 # ---------------------------------------------------------------- the shot
-T0, T1, FPS = 245.6, 269.56, 60
+T0, T1, FPS = 245.6, 259.2, 60         # (the end credits cut in when the music comes back up)
 RISE = (247.2, 248.8)                  # the phone comes up into view (song time)...
-LOWER = (265.6, 269.3)                 # ...and sinks again as he drifts back off
+LOWER = (1e9, 1e9 + 1)                 # ...(and could sink again; not before the cut)
 FOCUS_PULL = (247.9, 249.3)            # groggy focus (on nothing) -> on the phone
-FOCUS_LOSE = (266.2, 269.0)            # ...and back to nothing
+FOCUS_LOSE = (1e9, 1e9 + 1)            # ...(and back to nothing)
 RISE_FROM = Vector((0.09, -0.3, 0.06))  # where the phone comes up from (camera space, below the frame)
 LOWER_TO = Vector((0.05, -0.2, 0.05))
 
@@ -411,7 +411,9 @@ def main():
     ap.add_argument("--only")
     ap.add_argument("--fly", action="store_true", help="render the whole shot")
     ap.add_argument("--screen", help="the phone's video (wake_phone.py; its first frame at song 245.6)")
-    ap.add_argument("--pass", dest="layer", default="main", choices=("main", "screen"))
+    ap.add_argument("--pass", dest="layer", choices=("main", "screen"),
+                    help="render one of the two passes (the default for a final; a preview without it draws the "
+                         "screen straight in)")
     ap.add_argument("--patch", help="START,END song seconds: re-render only these frames of a final pass")
     A = ap.parse_args(argv)
     res = A.res or (540 if A.preview else 1080)
@@ -422,7 +424,9 @@ def main():
     setup_render(sc, res, A.preview)
     if A.fly:
         animate(S, sc)
-        if A.screen and not A.preview:
+        split = A.screen and (A.layer or not A.preview)
+        A.layer = A.layer or "main"
+        if split:
             split_screen_pass(sc, A.layer)
         im = sc.render.image_settings
         im.file_format = "FFMPEG"

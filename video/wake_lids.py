@@ -17,7 +17,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FPS = 60
-T0, T1 = 245.6, 269.56            # the outro
+T0, T1 = 245.6, 259.2             # the outro's wake-up (the end credits cut in at 259.2)
 
 # (song time, openness): eased between keys (smootherstep), so nothing jolts
 LIDS = [
@@ -26,8 +26,7 @@ LIDS = [
     (247.55, 0.22), (248.25, 0.62),           # opening properly as the phone comes up
     (250.4, 0.66), (250.55, 0.02), (250.75, 0.68),   # a slow blink
     (254.2, 0.7), (254.35, 0.02), (254.55, 0.72),    # another
-    (259.6, 0.74), (259.75, 0.02), (259.95, 0.74),
-    (265.5, 0.7), (267.6, 0.18), (268.0, 0.25), (269.2, 0.0),   # drifting back off to sleep
+    (259.2, 0.72),
 ]
 
 

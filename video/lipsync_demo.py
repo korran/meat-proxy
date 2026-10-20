@@ -497,11 +497,11 @@ def render(sc, out, frames, fps, start, stills=None, preview=False, lossless=Fal
             sc.render.filepath = f"{out}/still_{t:07.3f}_{frames[f - 1]['v']}.png"
             bpy.ops.render.render(write_still=True)
             print("STILL", t, frames[f - 1]["v"], frames[f - 1]["word"])
-    elif lossless:   # one lossless FFV1 video, out + ".mkv"
+    elif lossless:   # one lossless FFV1 video, out + ".mkv" (with alpha, if the background's transparent)
         im = sc.render.image_settings
         im.file_format = "FFMPEG"
-        im.color_mode = "RGB"
         sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
+        im.color_mode = "RGBA" if sc.render.film_transparent else "RGB"     # (after the codec: it sets the choices)
         sc.render.ffmpeg.audio_codec = "NONE"
         sc.render.use_file_extension = False
         import render_out

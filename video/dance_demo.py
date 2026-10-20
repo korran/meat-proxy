@@ -91,7 +91,7 @@ FACING = [0.0, -0.32, 0.22, -0.12, 0.35, -0.25, 0.1]
 def phrase_plan(B):
     """A groove variant and a facing direction per two-bar phrase, never the same twice in a row
     (chorus grooves in the chorus, verse grooves elsewhere)."""
-    rng = random.Random(7)
+    rng = random.Random(getattr(P, "seed", 7))      # (each part can have its own sequence of grooves)
     bar_t = {}
     for b in B.b:
         bar_t.setdefault(b["bar"], b["t"])
@@ -341,6 +341,12 @@ def main():
                                   ap.add_argument("--screen", help="video for the set's big screen (screen_graphics.py)"),
                                   ap.add_argument("--screen-start", type=float, default=0.0,
                                                   help="song time of that video's first frame"),
+                                  ap.add_argument("--wide", action="store_true",
+                                                  help="--set void: 2:1 and her whole body (the yacht's LED wall), "
+                                                       "not a portrait phone video"),
+                                  ap.add_argument("--bare", action="store_true",
+                                                  help="--set void: just her (no pedestal, floor or cubes), on a "
+                                                       "transparent background (a lossless RGBA .mkv)"),
                                   ap.add_argument("--half", action="store_true",
                                                   help="render every other frame (30 fps) for a quicker preview")))
     P = PARTS[A.part]
@@ -683,9 +689,15 @@ def main():
     elif A.set == "void":    # the outro's phone video: v9 alone on her spire in the void, filmed
         import cyber_set as CS  # selfie-style in portrait (no holograms, no 3D lyrics)
         spot = CS.stage_spot()
+        before = set(bpy.data.objects)
         void = CS.build(sc, v9=False, holos=False)
         CS.animate_cubes(void["cubes"], n, fps)
         CS.animate_leds(void["leds"], n, fps)
+        if A.bare:    # just her (the set's lights stay), on a transparent background
+            for ob in set(bpy.data.objects) - before:
+                if ob.type in ("MESH", "CURVE", "FONT"):
+                    ob.hide_render = True
+            sc.render.film_transparent = True
     elif A.set == "news":    # in the SINN studio, the Dyson sphere assembling behind her
         import news_set as NS
         spot = NS.anchor_spot()
@@ -769,7 +781,7 @@ def main():
             dist -= 0.15 * smooth((t - c0) / 3.0) * (1 - smooth((t - P.chorus[1]) / 2.0))
         dist -= cam_bump[i]
         if void:    # a phone video: close and level, the faintest hand-held drift
-            loc, tgt, lens = VOID_VIEW
+            loc, tgt, lens = VOID_WIDE_VIEW if A.wide else VOID_VIEW
             cam.location = (ox + loc[0] + 0.006 * math.sin(tt * 0.37) + 0.003 * math.sin(tt * 1.13),
                             oy + loc[1], oz + loc[2] + 0.005 * math.sin(tt * 0.29 + 1.0))
             SL.aim(cam, (ox + tgt[0], oy + tgt[1], oz + tgt[2] + 0.15 * root_z[i]))
@@ -838,12 +850,12 @@ def main():
         if plan:
             CS.animate_phones(cyber["phones"], plan, start, fps)
     if os.environ.get("DANCE_DUMP"):  # motion curves for checking timing outside Blender
-        json.dump({"t": times, "root_z": root_z, **S}, open(os.environ["DANCE_DUMP"], "w"))
+        json.dump({"t": times, "root_z": root_z, "spin": spin, **S}, open(os.environ["DANCE_DUMP"], "w"))
         return
     LS.setup_look(sc, fps, n, A.res, A.samples, A.blur_steps, A.shutter, A.preview,
                   on_set=spot if office or yacht or news or cyber or void else None)
-    if void:   # portrait, like a phone video (--res is its height)
-        sc.render.resolution_x, sc.render.resolution_y = A.res * 9 // 16, A.res
+    if void:   # portrait, like a phone video, or 2:1 for the LED wall (--res is its height)
+        sc.render.resolution_x, sc.render.resolution_y = (A.res * 2 if A.wide else A.res * 9 // 16), A.res
     if news:
         NS.focus(cam)
     if office or yacht or news or cyber or void:
@@ -856,11 +868,12 @@ def main():
         sc.render.fps, sc.render.frame_map_old, sc.render.frame_map_new = fps // 2, 2, 1
         sc.frame_end = n // 2
     patch = tuple(float(v) for v in A.patch.split(",")) if A.patch else None
-    LS.render(sc, A.out, frames, fps, start, A.stills, A.preview, A.lossless, patch)
+    LS.render(sc, A.out, frames, fps, start, A.stills, A.preview, A.lossless or (void and A.bare), patch)
 
 
 # the outro's phone video: camera (location, target, relative to her spot) and lens
 VOID_VIEW = ((0.0, -1.25, 0.62), (0.0, 0.0, 0.5), 50)
+VOID_WIDE_VIEW = ((0.0, -3.9, 0.42), (0.0, 0.0, 0.36), 50)   # (2:1: her whole body, room either side)
 
 
 def walk_in(kev, t0, start, n, fps, dist=0.7, dur=1.7, steps_per_s=2.6):
