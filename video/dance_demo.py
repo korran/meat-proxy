@@ -813,7 +813,7 @@ def main():
             SL.aim(cam, (ox + S["rx"][i] * 0.5, oy, oz + 0.45 + 0.4 * (root_z[i] + 0.0)))
             cam.data.lens = 50
         cam.keyframe_insert("location", frame=f)
-        cam.keyframe_insert("rotation_euler", frame=f)
+        SL.key_rotation(cam, f)
         cam.data.keyframe_insert("lens", frame=f)
 
     if cyber:   # the 3D glass lyrics, placed for the camera

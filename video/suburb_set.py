@@ -758,7 +758,7 @@ def main():
             SL.aim(cam, tgt)
             cam.data.lens = lens
             cam.keyframe_insert("location", frame=f)
-            cam.keyframe_insert("rotation_euler", frame=f)
+            SL.key_rotation(cam, f)
             cam.data.keyframe_insert("lens", frame=f)
         sc.frame_start, sc.frame_end, sc.render.fps = 1, n, fps
         sc.render.image_settings.file_format = "FFMPEG"

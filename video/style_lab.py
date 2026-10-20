@@ -1168,7 +1168,27 @@ def name_sign(B, text, x):
 # ------------------------------------------------------------------ scene per style
 
 def aim(ob, target):
-    ob.rotation_euler = (Vector(target) - ob.location).to_track_quat("-Z", "Y").to_euler()
+    q = (Vector(target) - ob.location).to_track_quat("-Z", "Y")
+    if ob.rotation_mode == "QUATERNION":
+        ob.rotation_quaternion = q
+    else:
+        ob.rotation_euler = q.to_euler()
+
+
+def key_rotation(ob, frame):
+    """Keyframe an object's rotation as a quaternion kept continuous with its previous key.
+    (Motion blur interpolates between keys; Euler angles can flip between equivalent values from
+    one frame to the next, looking near straight up or down or across +-180 degrees, which
+    smears the whole frame.) Leaves the object in quaternion mode."""
+    from mathutils import Quaternion
+    q = ob.rotation_quaternion.copy() if ob.rotation_mode == "QUATERNION" else ob.rotation_euler.to_quaternion()
+    ob.rotation_mode = "QUATERNION"
+    prev = ob.get("_last_q")
+    if prev is not None and q.dot(Quaternion(prev)) < 0:
+        q.negate()
+    ob.rotation_quaternion = q
+    ob.keyframe_insert("rotation_quaternion", frame=frame)
+    ob["_last_q"] = tuple(q)
 
 
 def render_style(style):

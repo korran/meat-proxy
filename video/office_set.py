@@ -555,7 +555,7 @@ def fly(sc, fps, seconds):
         SL.aim(cam, tgt)
         cam.data.lens = lens
         cam.keyframe_insert("location", frame=f + 1)
-        cam.keyframe_insert("rotation_euler", frame=f + 1)
+        SL.key_rotation(cam, f + 1)
         cam.data.keyframe_insert("lens", frame=f + 1)
     sc.frame_start, sc.frame_end = 1, n
     sc.render.fps = fps
