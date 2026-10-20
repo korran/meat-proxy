@@ -306,7 +306,7 @@ def build_interior(B, col, hx, hy, screen_video=None, screen_offset=0):
     col.objects.link(go)
     go.parent = pad
     go.location = (0, -0.05, sz)
-    go.rotation_euler.x = math.pi / 2
+    go.rotation_euler.x = -math.pi / 2                                      # facing out of the screen, at the toddler
     return {"user": user, "toddler": tod, "ipad": pad, "screen": scr}
 
 
