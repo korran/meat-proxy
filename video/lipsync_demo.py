@@ -482,7 +482,49 @@ def add_camera(sc, loc, target, lens):
     return cam
 
 
-def render(sc, out, frames, fps, start, stills=None, preview=False, lossless=False):
+def _count_frames(path):
+    import subprocess
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets", "-show_entries",
+                        "stream=nb_read_packets,pix_fmt", "-of", "csv=p=0", path], capture_output=True, text=True)
+    pix, n = r.stdout.strip().split(",")
+    return int(n), pix
+
+
+def splice(original, patch, first, fps):
+    """Replace frames first .. first + len(patch) - 1 (1-based) of the lossless video `original`
+    with the frames of `patch`, losslessly; the original is replaced only once the result has
+    the same number of frames."""
+    import subprocess
+    n, pix = _count_frames(original)
+    m, _ = _count_frames(patch)
+    a, b = first - 1, first - 1 + m                      # frames [a, b) are replaced
+    if a < 0 or b > n:
+        raise ValueError(f"patch frames {first}..{first + m - 1} don't fit in {original} ({n} frames)")
+    parts, fc = [], ["[0:v]split=2[o1][o2]"]
+    if a > 0:
+        fc.append(f"[o1]trim=end_frame={a},setpts=PTS-STARTPTS[pa]")
+        parts.append("[pa]")
+    else:
+        fc.append("[o1]nullsink")
+    fc.append("[1:v]setpts=PTS-STARTPTS[pp]")
+    parts.append("[pp]")
+    if b < n:
+        fc.append(f"[o2]trim=start_frame={b},setpts=PTS-STARTPTS[pc]")
+        parts.append("[pc]")
+    else:
+        fc.append("[o2]nullsink")
+    fc.append("".join(parts) + f"concat=n={len(parts)}:v=1:a=0,setpts=N/({fps}*TB)[v]")
+    tmp = original + ".splicing.mkv"
+    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", original, "-i", patch,
+                    "-filter_complex", ";".join(fc), "-map", "[v]", "-c:v", "ffv1", "-pix_fmt", pix, "-r", str(fps),
+                    tmp], check=True)
+    if _count_frames(tmp)[0] != n:
+        raise RuntimeError(f"spliced video has {_count_frames(tmp)[0]} frames, expected {n}; original kept")
+    os.replace(tmp, original)
+    print(f"SPLICED frames {first}..{first + m - 1} into {original}")
+
+
+def render(sc, out, frames, fps, start, stills=None, preview=False, lossless=False, patch=None):
     """Render frames as PNGs into the folder `out` (or stills). In preview mode the animation is
     written straight to a silent H.264 video, `out` + ".mp4", instead (saving PNGs is slower
     than rendering them)."""
@@ -500,10 +542,24 @@ def render(sc, out, frames, fps, start, stills=None, preview=False, lossless=Fal
         im.color_mode = "RGB"
         sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
         sc.render.ffmpeg.audio_codec = "NONE"
-        sc.render.filepath = out + ".mkv"
         sc.render.use_file_extension = False
+        final = out + ".mkv"
+        if patch:     # just the frames between two song times, spliced into the existing video
+            t0, t1 = patch
+            f0 = max(1, int(round((t0 - start) * fps)) + 1)
+            f1 = min(len(frames), int(round((t1 - start) * fps)) + 1)
+            sc.frame_start, sc.frame_end = f0, f1
+            sc.render.filepath = out + ".patch.mkv"
+            bpy.ops.render.render(animation=True)
+            splice(final, sc.render.filepath, f0, fps)
+            os.remove(sc.render.filepath)
+            return
+        # written under a temporary name, renamed when complete (a stopped render never
+        # destroys the existing video)
+        sc.render.filepath = out + ".partial.mkv"
         bpy.ops.render.render(animation=True)
-        print("RENDER done", len(frames), "frames ->", sc.render.filepath)
+        os.replace(sc.render.filepath, final)
+        print("RENDER done", len(frames), "frames ->", final)
     elif preview:
         im = sc.render.image_settings
         im.file_format = "FFMPEG"
@@ -533,6 +589,8 @@ def parse_args(extra=None):
     ap.add_argument("--lossless", action="store_true", help="write a lossless FFV1 video (out.mkv) instead of PNGs")
     ap.add_argument("--blur-steps", type=int, default=4)
     ap.add_argument("--shutter", type=float, default=1.0)
+    ap.add_argument("--patch", help="START,END song seconds: with --lossless, re-render only these frames and "
+                                    "splice them into the existing out.mkv")
     ap.add_argument("--stills", help="render only these frame times (seconds, comma separated)")
     ap.add_argument("--preview", action="store_true",
                     help="fast check render: no motion blur, 1 sample, written straight to OUT.mp4")

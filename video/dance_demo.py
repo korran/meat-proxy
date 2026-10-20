@@ -840,7 +840,8 @@ def main():
     if A.half:   # play the animation twice as fast at half the frame rate: every other frame
         sc.render.fps, sc.render.frame_map_old, sc.render.frame_map_new = fps // 2, 2, 1
         sc.frame_end = n // 2
-    LS.render(sc, A.out, frames, fps, start, A.stills, A.preview, A.lossless)
+    patch = tuple(float(v) for v in A.patch.split(",")) if A.patch else None
+    LS.render(sc, A.out, frames, fps, start, A.stills, A.preview, A.lossless, patch)
 
 
 def walk_in(kev, t0, start, n, fps, dist=0.7, dur=1.7, steps_per_s=2.6):
