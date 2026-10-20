@@ -39,9 +39,11 @@ COLS, ROWS, ZONE_COLS = 4, 3, 3
 HOUSE_W, HOUSE_D = 18, 14              # house footprint
 WALL_H = 24                            # plates (8 bricks): one tall storey
 TARGET = (3, 1, 0, 0)                  # (block col, block row, lot, row in block: 0 south) - the house we enter
+OPPOSITE = (TARGET[0], TARGET[1] - 1, TARGET[2], 1)   # the house across the street from it...
+OPPOSITE_BACK = 11                     # ...set further back (studs), so the drone can come down low early
 SHOT_START = 148.6                     # song time the shot starts (the bridge ends)
-SHOT_LEN = 17.6                        # ...and its length: still pushing into the iPad as v9's first line
-                                       # starts (164.9); the cut to cyberspace comes at about 166.2
+SHOT_LEN = 19.6                        # ...and its length: still pushing into the iPad as v9's first line
+                                       # starts (165.3); the cut to cyberspace comes at 168.2
 
 LAWN, LAWN2, ROAD_C, WALK, LINE = "#4f9a3e", "#5aa646", "#3a3d42", "#b8bcc3", "#e8c15a"
 WALLS = ["#e6d3a3", "#a9c4dd", "#f2f2ee", "#a8bf9a", "#f0dc8c", "#d9a98c"]
@@ -118,7 +120,8 @@ def build_house(B, bx, by, lot, row, rng, interior=False, name=None):
     K = Kit(B)
     lx, ly, face = lot_origin(bx, by, lot, row)
     hx = lx + (LOT_W - HOUSE_W) // 2 - 2
-    hy = ly + (9 if face < 0 else LOT_D - 9 - HOUSE_D)          # set back from the front
+    back = OPPOSITE_BACK if (bx, by, lot, row) == OPPOSITE else 0
+    hy = ly + (9 if face < 0 else LOT_D - 9 - HOUSE_D - back)   # set back from the front
     wall, roof = rng.choice(WALLS), rng.choice(ROOFS)
     fy = hy if face < 0 else hy + HOUSE_D - 1                   # the front wall's row
     by_ = hy + HOUSE_D - 1 if face < 0 else hy                  # the back wall's row
@@ -254,13 +257,40 @@ def build_fence(K, x0, y0, x1, y1):
 
 
 # ---------------------------------------------------------------- the house we enter
-IPAD_SCREEN = (0.32, 0.18, 0.105)     # the iPad's screen: width, height (16:9, the frame's shape), centre height
+IPAD_SCREEN = (0.16, 0.09, 0.07)      # the iPad's screen: width, height (16:9, the frame's shape), centre up the slab
+CASE_RIM, CASE_COLOR = 0.034, "#2ec4c4"   # the foam case's rim width, and its colour (turquoise: clear of the pink rug)
+TODDLER = (13.0, 4.0)                  # where she sits in the house (studs from its corner), facing +y
+TODDLER_TURN = math.radians(40)        # turned to her left (with the iPad), so from the window the screen
+                                       # shows over her left shoulder
+TODDLER_SCALE = 0.62
+TODDLER_Z = 2.3 * PL - (0.24 - 0.0725) * TODDLER_SCALE   # sitting on the rug (her hip axle's underside on it)
+IPAD_LAP = (0.0, 0.115, 0.286)         # the iPad's bottom edge, held up in her hands over her lap (offset from her)
+IPAD_CANT = math.radians(-12)          # and tipped a little toward her left (round its own up axis)
+IPAD_TILT = -1.3                       # lying back in her lap, its screen facing up (toward her face)
+
+
+def _turn():
+    from mathutils import Matrix
+    return Matrix.Rotation(TODDLER_TURN, 3, "Z")
+
+
+def ipad_rot():
+    """The iPad's rotation: canted toward her left, tilted back, then turned with her."""
+    from mathutils import Matrix
+    return _turn() @ Matrix.Rotation(IPAD_TILT, 3, "X") @ Matrix.Rotation(IPAD_CANT, 3, "Z")
+
+
+def ipad_base(hx, hy):
+    return Vector(((hx + TODDLER[0]) * P, (hy + TODDLER[1]) * P, 0.0)) + _turn() @ Vector(IPAD_LAP)
+
+
+USER_LAP_ARM = ((-0.25, SL.ARM_SLOPE, 0.4), -1.05)   # the User's free arm (shoulder rotation, elbow bend): resting by their lap
 
 
 def build_interior(B, col, hx, hy, screen_video=None, screen_offset=0):
     """Inside the target house (front wall at hy, facing -y): a wood floor and a rug, the User on
-    the sofa against the back wall facing the window, their toddler on the rug facing the iPad
-    (its back to the window), the iPad on a stand facing the toddler, a lamp."""
+    the sofa against the back wall facing the window, their toddler on the rug (her back to the
+    window) with the iPad in her lap, a lamp."""
     K = Kit(B)
     K.piece(hx + 1, hy + 1, 1, HOUSE_W - 2, HOUSE_D - 2, 1, "#a8743f", studs=False)
     K.piece(hx + 6, hy + 4, 2, 9, 6, 0.3, "#c97a8a", studs=False)          # rug
@@ -275,24 +305,84 @@ def build_interior(B, col, hx, hy, screen_video=None, screen_offset=0):
     lo.location = ((hx + 3) * P, (hy + HOUSE_D - 3) * P, 15.5 * PL)
     # the User on the sofa (built facing -y: toward the window)
     user = place_figure(SL.build_user, B, ((hx + 10.5) * P, (hy + HOUSE_D - 3.2) * P, 2 * PL))
+    # their free hand (the phone's in the other) rests in their lap, not held out in front
+    for o in user.children_recursive:
+        if o.type == "EMPTY" and o.name.split(".")[0] == "shoulder-1":
+            o.rotation_euler = USER_LAP_ARM[0]
+        elif o.type == "EMPTY" and o.name.split(".")[0] == "elbow-1":
+            o.rotation_euler.x = USER_LAP_ARM[1]
     # the toddler, facing the iPad (+y)
-    tod = place_figure(build_toddler, B, ((hx + 10.5) * P, (hy + 4.0) * P, 2.3 * PL))
-    tod.rotation_euler.z = math.pi
-    tod.scale = (0.62, 0.62, 0.62)
-    # the iPad on a little stand, facing the toddler (-y)
-    ipad = (hx + 10.5) * P, (hy + 6.6) * P
-    K = Kit(B)
-    K.box(ipad[0] - 0.12, ipad[1] - 0.02, 2 * PL, ipad[0] + 0.12, ipad[1] + 0.06, 2 * PL + 0.04, "#2a2a30")
-    K.build("ipad_stand")
+    tod = place_figure(build_toddler, B, ((hx + TODDLER[0]) * P, (hy + TODDLER[1]) * P, TODDLER_Z))
+    tod.rotation_euler.z = math.pi + TODDLER_TURN
+    tod.scale = (TODDLER_SCALE,) * 3
+    bpy.context.view_layer.update()
+    neck_z = TODDLER_Z + (SL.FIG["z_adult"] + SL.FIG["torso_h"]) * TODDLER_SCALE
+    head = [ob for ob in tod.children_recursive if ob.type != "EMPTY" and
+            (sum((ob.matrix_world @ Vector(c) for c in ob.bound_box), Vector()) / 8).z > neck_z]
+    # the iPad in her lap: its bottom edge on her thighs, leaning back, the screen up toward her face
     pad = bpy.data.objects.new("ipad", None)
     col.objects.link(pad)
-    pad.location = (ipad[0], ipad[1], 2 * PL + 0.04)
-    pad.rotation_euler.x = -0.32                                            # leaning back
+    pad.location = ipad_base(hx, hy)
+    # her hands' places on the case, set while it's held square...
+    from mathutils import Matrix
+    pad.rotation_mode = "QUATERNION"
+    pad.rotation_quaternion = (_turn() @ Matrix.Rotation(IPAD_TILT, 3, "X")).to_quaternion()
+    bpy.context.view_layer.update()
+    kids = tod.children_recursive
+    grips = []
+    for side in ("-1", "1"):
+        hand = next(o for o in kids if o.type != "EMPTY" and o.name.split(".")[0] == f"hand{side}")
+        sh = next(o for o in kids if o.type == "EMPTY" and o.name.split(".")[0] == f"shoulder{side}")
+        el = next(o for o in kids if o.type == "EMPTY" and o.name.split(".")[0] == f"elbow{side}")
+        grips.append((hand, sh, el, pad.matrix_world.inverted() @ hand.matrix_world.translation))
+    # ...then it's canted, and each arm swings at the shoulder and bends at the elbow until its hand
+    # is back on its place
+    pad.rotation_quaternion = ipad_rot().to_quaternion()
+    bpy.context.view_layer.update()
+    for hand, sh, el, local in grips:
+        want = pad.matrix_world @ local
+
+        def miss(ob, v):
+            ob.rotation_euler.x = v
+            bpy.context.view_layer.update()
+            return (hand.matrix_world.translation - want).length
+        for _ in range(6):                      # (alternate golden-section searches on the two joints)
+            for ob in (sh, el):
+                v0 = ob.rotation_euler.x
+                lo, hi = v0 - 0.5, v0 + 0.5
+                for _ in range(30):
+                    m1, m2 = hi - (hi - lo) * 0.618, lo + (hi - lo) * 0.618
+                    if miss(ob, m1) < miss(ob, m2):
+                        hi = m2
+                    else:
+                        lo = m1
+                miss(ob, (lo + hi) / 2)
+        print(f"GRIP {hand.name}: off by {(hand.matrix_world.translation - want).length * 1000:.1f} mm")
     K = Kit(B)
     sw, sh, sz = IPAD_SCREEN
-    K.box(-sw / 2 - 0.02, 0.0, sz - sh / 2 - 0.02, sw / 2 + 0.02, 0.018, sz + sh / 2 + 0.02, "#1b1d22")
+    # a thin black bezel round the screen, in a chunky turquoise foam kids' case: a raised rim she
+    # holds it by, and a carry handle on the far edge
+    bz = 0.008
+    K.box(-sw / 2 - bz, 0.0, sz - sh / 2 - bz, sw / 2 + bz, 0.008, sz + sh / 2 + bz, "#141518")
     body = K.build("ipad_body")
     body.parent = pad
+    rim = CASE_RIM
+    W, H = sw + 2 * (bz + rim), sh + 2 * (bz + rim)
+    parts = [B.box("case_back", (0, 0.016, sz), (W, 0.02, H), CASE_COLOR, bevel=0.01, kind="matte")]
+    for sx in (-1, 1):                                                       # the rim's sides...
+        parts.append(B.box(f"case_side{sx}", (sx * (W - rim) / 2, -0.001, sz), (rim, 0.022, H), CASE_COLOR,
+                           bevel=0.009, kind="matte"))
+    for sz_ in (-1, 1):                                                      # ...top and bottom
+        parts.append(B.box(f"case_end{sz_}", (0, -0.001, sz + sz_ * (H - rim) / 2), (W - 2 * rim + 0.004, 0.022, rim),
+                           CASE_COLOR, bevel=0.009, kind="matte"))
+    top_z = sz + H / 2
+    for sx in (-1, 1):                                                       # the handle
+        parts.append(B.box(f"case_post{sx}", (sx * 0.055, 0.008, top_z + 0.018), (0.024, 0.02, 0.04), CASE_COLOR,
+                           bevel=0.008, kind="matte"))
+    parts.append(B.box("case_grip", (0, 0.008, top_z + 0.04), (0.134, 0.02, 0.022), CASE_COLOR, bevel=0.009,
+                       kind="matte"))
+    for ob in parts:
+        ob.parent = pad
     if screen_video:   # the cyberspace shot itself, in sync (the push-in lands on it, then cuts to it)
         from office_set import movie_material
         mat = movie_material("ipad_img", screen_video, screen_offset, 1.5)   # (brighter: it goes through this shot's look again)
@@ -301,29 +391,54 @@ def build_interior(B, col, hx, hy, screen_video=None, screen_offset=0):
     scr = picture(col, "ipad_screen", mat, (0, -0.001, sz), (sw, sh), "-y")
     scr.parent = pad
     glow = bpy.data.lights.new("ipadglow", "AREA")
-    glow.energy, glow.size, glow.color = 3.0, 0.25, (0.75, 0.7, 1.0)
+    glow.energy, glow.size, glow.color = 1.5, 0.18, (0.75, 0.7, 1.0)
     go = bpy.data.objects.new("ipadglow", glow)
     col.objects.link(go)
     go.parent = pad
     go.location = (0, -0.05, sz)
     go.rotation_euler.x = -math.pi / 2                                      # facing out of the screen, at the toddler
-    return {"user": user, "toddler": tod, "ipad": pad, "screen": scr}
+    return {"user": user, "toddler": tod, "ipad": pad, "screen": scr, "head": head}
+
+
+TODDLER_SHIRT, TODDLER_HAIR = "#ff8fc0", "#e2b85c"
+
+
+def heart(cx, cz, size):
+    """A heart outline (for printing on the shirt), centred at (cx, cz), about `size` across."""
+    k = size / 34.0
+    pts = []
+    for i in range(24):
+        t = math.tau * i / 24
+        x = 16 * math.sin(t) ** 3
+        y = 13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t)
+        pts.append((cx + k * x, cz + k * y))
+    return pts
 
 
 def build_toddler(B):
-    """A two-year-old: short legs out in front (sitting on the floor), a big head, a striped tee,
-    arms resting on the knees, wide eyes on the screen."""
-    top = SL.fig_torso(B, SL.fig_kid_legs(B, "#4fb3f0", "#f4f4f0"), "#ffd166")
+    """A two-year-old: short legs out in front (sitting on the floor), a big head with pigtails, a
+    pink tee scattered with little white hearts, arms resting on the knees, eyes on the screen."""
+    top = SL.fig_torso(B, SL.fig_adult_legs(B, "#4fb3f0", "#f4f4f0"), TODDLER_SHIRT)   # (full-length legs)
     z0 = top - SL.FIG["torso_h"]
-    for k in range(3):
-        SL.print_poly(B, f"stripe{k}", [(-0.15, z0 + 0.05 + 0.08 * k), (0.15, z0 + 0.05 + 0.08 * k),
-                                        (0.15, z0 + 0.085 + 0.08 * k), (-0.15, z0 + 0.085 + 0.08 * k)], "#ff9f7a")
-    SL.fig_arms(B, top, "#ffd166", "fig_skin", poses=("forward", "forward"), long_sleeve=False)
+    for k, (u, v, sz) in enumerate(((-0.08, 0.2, 0.05), (0.06, 0.24, 0.042), (0.0, 0.12, 0.055),
+                                    (-0.09, 0.06, 0.04), (0.09, 0.09, 0.046), (-0.03, 0.22, 0.034),
+                                    (0.05, 0.03, 0.036))):
+        before = set(bpy.data.objects)
+        SL.print_poly(B, f"heart{k}", heart(u, z0 + v, sz), "white")
+        for ob in set(bpy.data.objects) - before:   # and on the back (turned round the torso's axis)
+            back = ob.copy()
+            B.col.objects.link(back)
+            back.rotation_euler.z += math.pi
+    SL.fig_arms(B, top, TODDLER_SHIRT, "fig_skin", poses=("forward", "forward"), long_sleeve=False)
     c, cyl = SL.fig_head(B, top, "fig_skin")
     SL.face_eyes(B, c, cyl)
     SL.face_mouth(B, c, "flat")
-    B.sphere("hair", (0, 0.02, c + 0.075), (0.104, 0.104, 0.045), "#e2b85c", kind="glossy")
-    B.capsule("tuft", (0.0, -0.02, c + 0.11), (0.02, -0.04, c + 0.15), 0.012, "#e2b85c", kind="glossy")
+    B.sphere("hair", (0, 0.02, c + 0.075), (0.104, 0.104, 0.045), TODDLER_HAIR, kind="glossy")
+    B.sphere("fringe", (0.0, -0.07, c + 0.085), (0.08, 0.03, 0.025), TODDLER_HAIR, kind="glossy")
+    for sx in (-1, 1):                          # pigtails, tied with pink bobbles
+        B.sphere(f"tie{sx}", (0.1 * sx, 0.03, c + 0.055), (0.022, 0.022, 0.022), "#ff5fa8", kind="glossy")
+        B.sphere(f"pigtail{sx}", (0.135 * sx, 0.04, c + 0.02), (0.035, 0.035, 0.06), TODDLER_HAIR, kind="glossy",
+                 rot=(0, 0.5 * sx, 0))
     for hip, knee in B.legs[-2:]:               # sitting: legs straight out in front
         hip.rotation_euler.x = -math.pi / 2
         knee.rotation_euler.x = 0.0
@@ -432,8 +547,9 @@ def set_sun(sc, elev, rot):
 
 # ---------------------------------------------------------------- the time-lapse
 SPEED_DECAY, SPEED_RATIO = 0.12, 60.0
-EASE_TIME, EASE_END = 1.6, 0.015            # ...easing in over the last 1.6 s almost to a stop (the screen fills the frame)
-TL = (0.0, 9.0)            # time-lapse (s from the shot's start): houses go, datacenters rise
+EASE_MID, EASE_LAST = 0.4, 1.3         # ...down to EASE_MID of its speed, then over the last 1.3 s to EASE_END
+EASE_TIME, EASE_END = 5.0, 0.015            # ...easing in over the last 5 s almost to a stop (the screen fills the frame)
+TL = (0.0, 10.0)           # time-lapse (s from the shot's start): houses go, datacenters rise
 TL_FROM = 0.25              # ...already this far along when the shot starts (much of it rubble)
 
 
@@ -509,34 +625,41 @@ def target_window():
 def ipad_screen():
     """The iPad screen's centre and its facing direction (world)."""
     _, (hx, hy) = target_window()
-    a = -0.32
-    base = Vector(((hx + 10.5) * P, (hy + 6.6) * P, 2 * PL + 0.04))
+    a = IPAD_TILT
+    base = ipad_base(hx, hy)
     sz = IPAD_SCREEN[2]
-    centre = base + Vector((0, -0.001 * math.cos(a) - sz * math.sin(a), -0.001 * math.sin(a) + sz * math.cos(a)))
-    normal = Vector((0, -math.cos(a), -math.sin(a)))
+    centre = base + ipad_rot() @ Vector((0.0, -0.001, sz))
+    normal = ipad_rot() @ Vector((0.0, -1.0, 0.0))
     return centre, normal
 
 
-IPAD_FILL = IPAD_SCREEN[0] / 2 * 36 / 18      # the distance at which (with a 36 mm lens) the screen fills the frame
+END_LENS = 110.0                              # the landing lens: long, so the camera stops above her head
+IPAD_FILL = IPAD_SCREEN[0] / 2 * END_LENS / 18    # the distance at which the screen fills the frame
 
 
 def drone_path():
     """(time s from the shot's start, camera, look-at, lens)."""
     win, (hx, hy) = target_window()
     ipad, nrm = ipad_screen()
-    over = Vector(((hx + 11.85) * P, (hy + 3.3) * P, 2 * PL + 0.48))      # over the toddler's shoulder
-    far = ipad - nrm * 2.5          # aim through the screen at a distant point (a near target swings the view)
+    tod = Vector(((hx + TODDLER[0]) * P, (hy + TODDLER[1]) * P, 0.0))
+    end = ipad + nrm * IPAD_FILL    # where the screen exactly fills the frame: up and to her left
+    lx = end.x                      # the line the camera comes in on, over her left shoulder
+    inside = Vector((lx, win.y + 0.3, max(end.z + 0.06, win.z + 0.1)))  # just through the window, high
+    over = inside.lerp(end, (tod.y - 0.12 - inside.y) / (end.y - inside.y))   # by her shoulder, on a steady descent
+    lined = Vector((lx, win.y - 1.0, inside.z + 0.12))   # lined up on the window, still descending
     W = COLS * PITCH_X * P
     D = ROWS * PITCH_Y * P
     return [
         (0.0, (2.0, -12.0, 16.0), (14.0, D * 0.5, 0.0), 28),
-        (4.0, (14.0, -11.0, 15.0), (26.0, D * 0.5, 0.0), 28),
-        (8.0, (30.0, -10.0, 12.0), (42.0, D * 0.5, 0.0), 28),
-        (9.2, tuple(win + Vector((-4.5, -9.0, 5.5))), tuple(win + Vector((0, 0, 0.5))), 30),   # clear of the roofs
-        (10.4, tuple(win + Vector((-0.5, -4.2, 1.5))), tuple(win), 30),
-        (11.6, tuple(win + Vector((0.0, -1.0, 0.08))), tuple(far), 32),
-        (13.3, tuple(over), tuple(far), 34),
-        (SHOT_LEN, tuple(ipad + nrm * IPAD_FILL), tuple(far), 36),     # the screen exactly fills the frame
+        (4.5, (14.0, -11.0, 15.0), (26.0, D * 0.5, 0.0), 28),
+        (8.9, (30.0, -10.0, 12.0), (42.0, D * 0.5, 0.0), 28),
+        (10.2, tuple(win + Vector((-4.5, -9.0, 5.5))), tuple(win + Vector((0, 0, 0.5))), 30),   # clear of the roofs
+        (11.6, (lx, win.y - 4.2, win.z + 0.75), (lx, win.y, win.z), 30),   # low early (past the house across the street,
+                                                                           # set back for it): the User's face shows
+        (12.9, tuple(lined), tuple(ipad), 32),                              # lined up, into the room
+        (14.8, tuple(inside), tuple(ipad), 33),                              # through the window
+        (16.3, tuple(over), tuple(ipad), 34),
+        (SHOT_LEN, tuple(end), tuple(ipad), END_LENS),     # the screen exactly fills the frame
     ]
 
 
@@ -585,6 +708,29 @@ def _drone_table(n=6000):
         e = f * f * (3 - 2 * f)
         lens = L_[k] + (L_[k + 1] - L_[k]) * e
         samples.append((pos, tgt, lens))
+    # Sideways, the curve from the flyover onto the straight line in would swing past the line and
+    # come back. Instead the camera settles onto it: its offset from the line only ever shrinks
+    # (a running minimum, floored at zero), smoothed along the path's length (which keeps it
+    # shrinking, and leaves the rest of the path's shape alone), so it glides on with no overshoot.
+    # The same for height: the flight only ever comes down.
+    import numpy as np
+    xyz = np.array([tuple(p) for p, _, _ in samples])
+    arc_ = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(xyz, axis=0), axis=1))])
+
+    def settle(off, sig=0.6):           # off: distance still to go, ending at 0; sig: metres along the path
+        run = np.maximum(0.0, np.minimum.accumulate(off))
+        step = 0.002                    # (smoothed on an even grid along the path, mirrored past both
+        grid = np.arange(0.0, arc_[-1] + step, step)      # ends so the window never narrows and the
+        g = np.interp(grid, arc_, run)                    # end stays exactly where it is)
+        r = int(3 * sig / step)
+        g = np.pad(g, r, mode="reflect", reflect_type="odd")
+        k = np.exp(-0.5 * (np.arange(-r, r + 1) * step / sig) ** 2)
+        g = np.convolve(g, k / k.sum(), mode="valid")
+        return np.interp(arc_, grid, g)
+    lx, lz = pts[-1][1][0], pts[-1][1][2]
+    sm = settle(lx - xyz[:, 0])
+    zs = lz + settle(xyz[:, 2] - lz)
+    samples = [(Vector((lx - o, p.y, z)), g, l) for o, z, (p, g, l) in zip(sm, zs, samples)]
     times = [0.0]
     for (a, _, _), (b, _, _) in zip(samples, samples[1:]):
         mid = (a + b) / 2
@@ -609,9 +755,11 @@ def _drone_table(n=6000):
         v = 1 + (r_ - 1) * (math.exp(-k_ * t) - eT) / (1 - eT)
         I = t + (r_ - 1) * ((1 - math.exp(-k_ * t)) / k_ - eT * t) / (1 - eT)
         return v, I
-    def ease(t):              # the last second eases in: the speed glides down to EASE_END of itself
-        u = min(1.0, max(0.0, (t - (T - EASE_TIME)) / EASE_TIME))
-        return 1 - (1 - EASE_END) * u * u * u * (u * (6 * u - 15) + 10)
+    def ease(t):              # a long, gentle slow-down (so it has time in the room), then a short
+        def e(span, to):      # final one, so it's still pushing in when v9 starts singing
+            u = min(1.0, max(0.0, (t - (T - span)) / span))
+            return 1 - (1 - to) * u * u * u * (u * (6 * u - 15) + 10)
+        return e(EASE_TIME, EASE_MID) * e(EASE_LAST, EASE_END / EASE_MID)
     acc_s = [0.0]
     for j in range(1, N):
         t0_, t1_ = (j - 1) / rate, j / rate
@@ -643,19 +791,93 @@ def _drone_table(n=6000):
     raw = [on_path(sv) for sv in s_sm]
     pos = [r[0] for r in raw]
     dirs = [d.normalized() for d in smooth(smooth([r[1] for r in raw], 0.8, False), 0.8, False)]
-    lens = smooth(smooth([r[2] for r in raw], 0.5, False), 0.5, False)
-    # the last second: aim and zoom lock exactly onto the screen (square on, filling the frame), so
-    # the final frames match the cyberspace shot it cuts to
-    ipad_c, ipad_n = ipad_screen()
-    far = ipad_c - ipad_n * 2.5
+    # From PITCH_HOLD on, the view only ever tilts down (it would level out as the camera drops to
+    # the window, then have to tip back down): its pitch is held at its lowest so far, smoothed.
+    import numpy as np
+    pit = np.array([math.asin(max(-1.0, min(1.0, d.z))) for d in dirs])
+    j0 = int(PITCH_HOLD * rate)
+    held = pit.copy()
+    held[j0:] = np.minimum.accumulate(pit[j0:])
+    sg = 0.45 * rate
+    r = int(3 * sg)
+    k = np.exp(-0.5 * (np.arange(-r, r + 1) / sg) ** 2)
+    k /= k.sum()
+    padded = np.concatenate([np.full(r, held[0]), held, np.full(r, held[-1])])
+    soft = np.convolve(padded, k, mode="valid")
+    w = np.clip((np.arange(N) - (j0 - r)) / max(1, r), 0.0, 1.0)      # (the flyover before is left alone)
+    new = pit * (1 - w) + soft * w
     for j in range(N):
-        u = min(1.0, max(0.0, (j / rate - (T - 1.0)) / 0.8))
-        u = u * u * (3 - 2 * u)
-        if u > 0:
-            exact = (far - pos[j]).normalized()
-            dirs[j] = dirs[j].lerp(exact, u).normalized()
-            lens[j] = lens[j] + (36.0 - lens[j]) * u
-    return [j / rate for j in range(N)], [(p, p + d, l) for p, d, l in zip(pos, dirs, lens)]
+        h = Vector((dirs[j].x, dirs[j].y, 0.0)).normalized()
+        dirs[j] = (h * math.cos(new[j]) + Vector((0.0, 0.0, math.sin(new[j])))).normalized()
+    lens = smooth(smooth([r[2] for r in raw], 0.5, False), 0.5, False)
+    # From BLEND_START to the end, the view glides from following the path to the final view (square
+    # on to the screen, its edges level, filling the frame, which matches the cyberspace shot it cuts
+    # to) in one long eased blend: the turn down, the roll and the zoom all come from it, so none of
+    # them overshoots, and they settle together, at rest, on the last frame.
+    q_end = end_view()
+    win, _ = target_window()
+    jw = next(j for j in range(N) if pos[j].y >= win.y)           # when it's at the window
+    t_blend = jw / rate - BLEND_LEAD
+    from mathutils import Matrix
+    ipad_c, _ = ipad_screen()
+    up_end = q_end @ Vector((0.0, 1.0, 0.0))
+    ss5 = lambda u: u * u * u * (u * (6 * u - 15) + 10)       # (no jolt at either end)
+    ds = []
+    for j in range(N):
+        t = j / rate
+        # the aim: eases from the flyover's onto the screen's centre, then stays on it (so the
+        # screen stays centred all the way in, and the last frame is square on to it)
+        a = ss5(min(1.0, max(0.0, (t - AIM_FROM) / (AIM_TO - AIM_FROM))))
+        ds.append(dirs[j].lerp((ipad_c - pos[j]).normalized(), a).normalized())
+    # (it levels off once, gently, as it drops toward the window: that keeps the User's face in frame)
+    out = []
+    for j in range(N):
+        t = j / rate
+        d = ds[j]
+        # the roll and the zoom ease toward the final view's
+        b = ss5(min(1.0, max(0.0, (t - t_blend) / (T - t_blend))) ** BLEND_LATE)
+        up = Vector((0.0, 0.0, 1.0)) * (1 - b) + up_end * b
+        right = d.cross(up).normalized()
+        q = Matrix((right, right.cross(d), -d)).transposed().to_quaternion()
+        l = math.exp(math.log(lens[j]) * (1 - b) + math.log(END_LENS) * b)
+        out.append((pos[j], q, l))
+    return [j / rate for j in range(N)], out
+
+
+AIM_FROM, AIM_TO = 11.1, 15.0   # the aim eases onto the screen over this
+PITCH_HOLD = 8.9            # from here on the view only tilts down
+BLEND_LATE = 1.4            # (>1: the roll and zoom settle later, still going as v9 starts singing)
+BLEND_LEAD = 6.5            # the blend to the final view starts this long before the window
+
+
+def end_view():
+    """The landing camera's rotation: looking straight into the screen, its edges level in frame."""
+    from mathutils import Matrix
+    _, nrm = ipad_screen()
+    up = (ipad_rot() @ Vector((0.0, 0.0, 1.0))).normalized()     # the screen's own up, along the slab
+    fwd = -nrm
+    right = fwd.cross(up).normalized()
+    return Matrix((right, right.cross(fwd), -fwd)).transposed().to_quaternion()
+
+
+HEAD_HIDE = 0.0          # (the camera stays above her head now; nothing is hidden)
+
+
+def head_visible(S, cam_loc):
+    """False once the camera is (nearly) where her eyes are, at the end of the push-in: her head
+    would be behind or around the lens, so it's hidden from the camera only (it still casts
+    shadows and blocks nothing on the screen pass)."""
+    _, (hx, hy) = target_window()
+    eye = Vector(((hx + TODDLER[0]) * P, (hy + TODDLER[1]) * P,
+                  TODDLER_Z + (SL.FIG["z_adult"] + SL.FIG["torso_h"] + 0.12) * TODDLER_SCALE))
+    return (Vector(cam_loc) - eye).length > HEAD_HIDE
+
+
+def set_head(S, visible, frame=None):
+    for ob in S["interior"]["head"]:
+        ob.visible_camera = visible
+        if frame is not None:
+            ob.keyframe_insert("visible_camera", frame=frame)
 
 
 def drone_pose(t):
@@ -667,8 +889,23 @@ def drone_pose(t):
     import bisect
     i = min(len(times) - 2, max(0, bisect.bisect_right(times, t) - 1))
     f = (t - times[i]) / max(1e-9, times[i + 1] - times[i])
-    (p0, g0, l0), (p1, g1, l1) = samples[i], samples[i + 1]
-    return tuple(p0.lerp(p1, f)), tuple(g0.lerp(g1, f)), l0 + (l1 - l0) * f
+    (p0, q0, l0), (p1, q1, l1) = samples[i], samples[i + 1]
+    p = p0.lerp(p1, f)
+    q = q0.slerp(q1, f)
+    return tuple(p), tuple(p + q @ Vector((0.0, 0.0, -1.0))), l0 + (l1 - l0) * f
+
+
+def drone_quat(t):
+    """The camera's rotation at time t (quaternion)."""
+    global _DRONE
+    if _DRONE is None:
+        _DRONE = _drone_table()
+    times, samples = _DRONE
+    t = min(max(t, 0.0), times[-1])
+    import bisect
+    i = min(len(times) - 2, max(0, bisect.bisect_right(times, t) - 1))
+    f = (t - times[i]) / max(1e-9, times[i + 1] - times[i])
+    return samples[i][1].slerp(samples[i + 1][1], f)
 
 
 def split_screen_pass(sc, layer):
@@ -712,8 +949,9 @@ def setup_render(sc, res, preview):
 
 
 # check stills: (name, time s into the shot)
-STILLS = [("start", 0.2), ("lapse_a", 3.0), ("lapse_b", 6.0), ("lapse_end", 8.6), ("approach", 10.6),
-          ("window", 11.8), ("room", 12.6), ("ipad", 14.3), ("front", -1)]
+STILLS = [("start", 0.2), ("lapse_a", 3.3), ("lapse_b", 6.7), ("lapse_end", 9.6), ("approach", 13.4),
+          ("window", 15.0), ("room", 15.9), ("ipad", 16.6), ("front", -1),
+          ("end_a", 17.4), ("end_b", 18.0), ("end_c", 18.7), ("end_d", 19.55)]
 
 
 def main():
@@ -728,6 +966,8 @@ def main():
     ap.add_argument("--fly", action="store_true")
     ap.add_argument("--screen", help="the cyberspace shot, for the iPad (its first frame at --screen-start)")
     ap.add_argument("--screen-start", type=float, default=162.6)
+    ap.add_argument("--patch", help="START,END song seconds: re-render only these frames of a final (lossless) "
+                                    "pass and splice them into the existing video")
     ap.add_argument("--pass", dest="layer", default="main", choices=("main", "screen"),
                     help="main: the shot, the iPad screen dark (its light still on the room); screen: only the "
                          "screen, on black, in plain sRGB (so its pixels are the video's own), everything else a "
@@ -747,7 +987,7 @@ def main():
     T = drone_path()[-1][0]
     cam = camera(sc, *drone_path()[0][1:])
     cam.data.clip_start = 0.01
-    if A.screen:
+    if A.screen and A.fly and not (A.preview or A.flat):    # (stills and previews show the screen lit)
         split_screen_pass(sc, A.layer)
     if A.fly:
         n = int(round(T * fps))
@@ -755,11 +995,13 @@ def main():
         for f in range(1, n + 1):
             loc, tgt, lens = drone_pose((f - 1) / fps)
             cam.location = loc
-            SL.aim(cam, tgt)
+            cam.rotation_mode = "QUATERNION"
+            cam.rotation_quaternion = drone_quat((f - 1) / fps)
             cam.data.lens = lens
             cam.keyframe_insert("location", frame=f)
             SL.key_rotation(cam, f)
             cam.data.keyframe_insert("lens", frame=f)
+            set_head(S, head_visible(S, loc), f)
         sc.frame_start, sc.frame_end, sc.render.fps = 1, n, fps
         sc.render.image_settings.file_format = "FFMPEG"
         sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MPEG4", "H264"
@@ -769,10 +1011,13 @@ def main():
             sc.render.image_settings.color_mode = "RGB"
             sc.render.ffmpeg.audio_codec = "NONE"
         if A.layer == "screen":
-            sc.render.filepath = os.path.join(A.out, f"drone_screen{final}.mkv")
+            target = os.path.join(A.out, f"drone_screen{final}.mkv")
         else:
-            sc.render.filepath = os.path.join(A.out, "drone_final.mkv" if final else "drone.mp4")
-        bpy.ops.render.render(animation=True)
+            target = os.path.join(A.out, "drone_final.mkv" if final else "drone.mp4")
+        if A.patch and not target.endswith(".mkv"):
+            sys.exit("--patch needs a lossless (.mkv) render: drop --preview / --flat")
+        import render_out
+        render_out.render_movie(sc, target, fps, A.patch, SHOT_START)
         return
     t0, t1 = TL
     for name, t in STILLS:
@@ -785,8 +1030,14 @@ def main():
         else:
             loc, tgt, lens = drone_pose(t)
         cam.location = loc
-        SL.aim(cam, tgt)
+        if t < 0:
+            SL.aim(cam, tgt)
+        else:
+            cam.rotation_mode = "QUATERNION"
+            cam.rotation_quaternion = drone_quat(t)
         cam.data.lens = lens
+        set_head(S, head_visible(S, loc))
+        sc.frame_set(max(1, int(round(t * fps)) + 1))     # (so the iPad shows the right frame)
         sc.render.filepath = os.path.join(A.out, f"{name}.png")
         bpy.ops.render.render(write_still=True)
         print("STILL", sc.render.filepath)

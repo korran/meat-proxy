@@ -33,9 +33,9 @@ SECTIONS = [
      ["news_overlay_bridge_final.mkv", "news_overlay_bridge.mkv"], 0),
     # the drone shot's iPad screen is its own pass (in plain sRGB, so its pixels are the cyberspace
     # video's own), added on top: the push-in lands on exactly the frame the cut goes to
-    ("instrumental (drone)", ["drone_final.mkv", "suburb_stills/drone.mp4"], 148.6, 148.6, 166.2,
+    ("instrumental (drone)", ["drone_final.mkv", "suburb_stills/drone.mp4"], 148.6, 148.6, 168.2,
      ["drone_screen_final.mkv", "suburb_stills/drone_screen.mkv"], 0),
-    ("verse 3, chorus 3 (cyberspace)", ["cyber_v3c3_final.mkv", "cyber_v3c3_preview.mp4"], 162.6, 166.2, 245.6,
+    ("verse 3, chorus 3 (cyberspace)", ["cyber_v3c3_final.mkv", "cyber_v3c3_preview.mp4"], 162.6, 168.2, 245.6,
      None, 0),
     ("outro", [], 245.6, 245.6, None, None, 0),
 ]
