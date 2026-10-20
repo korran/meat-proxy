@@ -880,6 +880,8 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--res", type=int, default=1000, help="height in pixels (width = 1.6 x)")
     ap.add_argument("--stills")
+    ap.add_argument("--patch", help="START,END song seconds: re-render only these frames and splice them into "
+                                    "the existing lossless video")
     A = ap.parse_args(argv)
     build(json.load(open(A.lyrics)))
     sc = bpy.context.scene
@@ -908,9 +910,8 @@ def main():
     sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
     im.color_mode = "RGB"
     sc.render.ffmpeg.audio_codec = "NONE"
-    sc.render.filepath, sc.render.use_file_extension = A.out + ".mkv", False
-    bpy.ops.render.render(animation=True)
-    print("RENDER done ->", sc.render.filepath)
+    import render_out
+    render_out.render_movie(sc, A.out + ".mkv", SG.FPS, A.patch, START)
 
 
 if __name__ == "__main__":

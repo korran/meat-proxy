@@ -1055,6 +1055,8 @@ def main():
     ap.add_argument("--noblur", action="store_true", help="no motion blur (much quicker, for review)")
     ap.add_argument("--part", default="v1c1", choices=("v1c1", "v2c2"),
                     help="v2c2: the Founder's verse and chorus, for the yacht's 2:1 LED wall")
+    ap.add_argument("--patch", help="START,END song seconds: re-render only these frames and splice them into "
+                                    "the existing lossless video")
     ap.add_argument("--lossless", action="store_true",
                     help="write lossless FFV1 video (out.mkv), for use as the TV's texture in the 3D scene")
     A = ap.parse_args(argv)
@@ -1083,14 +1085,13 @@ def main():
     if A.lossless:
         im.color_mode = "RGB"
         sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
-        sc.render.filepath = A.out + ".mkv"
+        target = A.out + ".mkv"
     else:
         sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MPEG4", "H264"
         sc.render.ffmpeg.constant_rate_factor = "HIGH"
-        sc.render.filepath = A.out + ".mp4"
-    sc.render.use_file_extension = False
-    bpy.ops.render.render(animation=True)
-    print("RENDER done ->", sc.render.filepath)
+        target = A.out + ".mp4"
+    import render_out
+    render_out.render_movie(sc, target, FPS, A.patch, A.start)
 
 
 if __name__ == "__main__":

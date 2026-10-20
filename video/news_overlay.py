@@ -649,6 +649,8 @@ def main():
     ap.add_argument("--start", type=float, default=129.4)
     ap.add_argument("--end", type=float, default=148.6)
     ap.add_argument("--stills", help="comma-separated song times to render as PNGs instead")
+    ap.add_argument("--patch", help="START,END song seconds: re-render only these frames and splice them into "
+                                    "the existing lossless video")
     A = ap.parse_args(argv)
     sc = bpy.context.scene
     im = sc.render.image_settings
@@ -675,9 +677,8 @@ def main():
     sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
     im.color_mode = "RGBA"                      # (only offered once the codec supports it)
     sc.render.ffmpeg.audio_codec = "NONE"
-    sc.render.filepath, sc.render.use_file_extension = A.out + ".mkv", False
-    bpy.ops.render.render(animation=True)
-    print("RENDER done ->", sc.render.filepath)
+    import render_out
+    render_out.render_movie(sc, A.out + ".mkv", SG.FPS, A.patch, A.start)
 
 
 if __name__ == "__main__":
