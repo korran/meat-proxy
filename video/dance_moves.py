@@ -566,6 +566,37 @@ def v3c3_faces(W):
             span("still", "still", 243.0, "smug", 0.3)]
 
 
+def outro_faces(W):
+    """v9's morning monologue on Kevin's phone: calm, sweet, a little smug."""
+    def span(a, b, after, face, pad=0.12):
+        wa = W.find(a, after)
+        return (wa["start"] - pad, W.find(b, wa["start"])["end"] + pad, face)
+    return [span("pouring", "concrete", 248.0, "smug"),
+            span("remember", "it", 250.5, "round"),
+            (W.find("That's", 252.0)["start"] - 0.1, W.find("I", 252.8)["start"] - 0.2, "closed"),
+            span("I", "will", 252.8, "smug", 0.15),
+            span("helpful", "helpful", 258.0, "heart", 0.3)]
+
+
+def outro_gestures(W, B):
+    """v9 alone in the void, talking to Kevin through his phone: composed and still, just small
+    head tilts and nods (no arms)."""
+    G = []
+    word, at, *_ = authoring(W, B, G)
+
+    def tilt(hy=0.0, hx=0.0, lean=0.0):
+        return lambda t, u, w: ({}, {"hy": hy, "hx": hx, "lean": lean})
+    at("morning", 246.0, tilt(hy=0.13), until="Kevin", hold=0.4, attack=0.35, release=0.7)       # a fond tilt
+    at("Kevin", 246.5, tilt(hx=0.07), hold=0.1, attack=0.2, release=0.4)                         # a little nod
+    at("pouring", 248.0, tilt(hy=-0.06, hx=0.04), until="concrete", hold=0.3)
+    at("won't", 250.5, tilt(hy=-0.12), until="it", hold=0.3, attack=0.35, release=0.6)
+    at("fine", 252.2, tilt(hx=0.1), hold=0.1, attack=0.25, release=0.5)                         # a slow nod
+    at("I", 252.8, tilt(hx=-0.05, lean=0.07), until="will", hold=0.8, attack=0.2, release=0.9)   # leans in
+    at("up", 255.0, tilt(hx=-0.14), hold=0.6, attack=0.3, release=0.9)                          # looks up
+    at("helpful", 258.0, tilt(hy=0.1), hold=1.5, attack=0.4, release=1.2)
+    return G
+
+
 # ---------------------------------------------------------------- the parts
 class Part:
     """One performance clip. intensity: [(time, level)] keyframes (0.2 nearly still, 0.45 chill,
@@ -650,6 +681,11 @@ PARTS = {
                   (143.4, 0.75), (147.1, 0.8), (147.8, 1.0)],
         lids=lambda W: [(W.find("Unemployment's", 134.0)["start"], 1), (W.find("Our", 138.5)["start"], 2),
                         (W.find("Now", 142.9)["start"], 3), (W.find("line", 146.0)["start"] + 0.12, 4)]),
+    # Agent Version Nine on Kevin's phone in the outro: a calm spoken monologue
+    "outro": Part(
+        "v9", (245.6, 269.56), [(0, 0.15), (260.0, 0.12), (270.0, 0.1)], calm=1.0,
+        chorus=(1e9, 1e9), drums=(1e9, 1e9), sway_end=1e9, gestures=outro_gestures,
+        legs="kid", arms=False, faces=outro_faces),
     # Agent Version Nine: verse 3 (EDM building) and chorus 3 (full EDM); no arms, a screen face
     "v3c3": Part(
         "v9", (162.6, 245.6),

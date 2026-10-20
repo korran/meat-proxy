@@ -316,7 +316,7 @@ def animate_faces(eyesets, blink, faces, n, fps, start, default="happy"):
     for i in range(n):
         t = start + i / fps
         face = next((name for a, b, name in faces if a <= t < b), default)
-        state = "blink" if any(a <= t < b for a, b in shut) else face
+        state = "blink" if face == "closed" or any(a <= t < b for a, b in shut) else face   # (closed: - -)
         if state != prev:
             key_visible(blink, i + 1, state == "blink")
             for name, objs in eyesets.items():

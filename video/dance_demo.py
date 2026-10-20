@@ -335,7 +335,7 @@ def main():
     A = LS.parse_args(lambda ap: (ap.add_argument("--lyrics", required=True),
                                   ap.add_argument("--music", required=True),
                                   ap.add_argument("--part", default="v1c1", choices=sorted(PARTS)),
-                                  ap.add_argument("--set", default="none", choices=("none", "office", "yacht", "news", "cyber"),
+                                  ap.add_argument("--set", default="none", choices=("none", "office", "yacht", "news", "cyber", "void"),
                                                   help="perform inside a built set (before the part starts, "
                                                        "the set's intro camera runs)"),
                                   ap.add_argument("--screen", help="video for the set's big screen (screen_graphics.py)"),
@@ -658,6 +658,7 @@ def main():
             ob.parent = chest
             ob.matrix_parent_inverse = inv
     office, yacht, news, cyber, spot = None, None, None, None, (0.0, 0.0, 0.0)
+    void = None
     if A.set == "office":   # stand on the office stage; build the room around him
         import office_set as OS
         spot = OS.manager_spot()
@@ -679,6 +680,12 @@ def main():
             import screen_v3 as S3
             cyber["sched"] = S3.schedule(Ly)
             cyber["phones"] = CS.phone_holos(sc.collection, A.screen, int(round((A.screen_start - start) * fps)))
+    elif A.set == "void":    # the outro's phone video: v9 alone on her spire in the void, filmed
+        import cyber_set as CS  # selfie-style in portrait (no holograms, no 3D lyrics)
+        spot = CS.stage_spot()
+        void = CS.build(sc, v9=False, holos=False)
+        CS.animate_cubes(void["cubes"], n, fps)
+        CS.animate_leds(void["leds"], n, fps)
     elif A.set == "news":    # in the SINN studio, the Dyson sphere assembling behind her
         import news_set as NS
         spot = NS.anchor_spot()
@@ -761,7 +768,13 @@ def main():
             ang += 0.35 * math.sin(TAU * (t - c0) / 26.0) * smooth((t - c0) / 2.0)
             dist -= 0.15 * smooth((t - c0) / 3.0) * (1 - smooth((t - P.chorus[1]) / 2.0))
         dist -= cam_bump[i]
-        if cyber:   # cyberspace: slow drifts in the verse, wild moves in the chorus
+        if void:    # a phone video: close and level, the faintest hand-held drift
+            loc, tgt, lens = VOID_VIEW
+            cam.location = (ox + loc[0] + 0.006 * math.sin(tt * 0.37) + 0.003 * math.sin(tt * 1.13),
+                            oy + loc[1], oz + loc[2] + 0.005 * math.sin(tt * 0.29 + 1.0))
+            SL.aim(cam, (ox + tgt[0], oy + tgt[1], oz + tgt[2] + 0.15 * root_z[i]))
+            cam.data.lens = lens
+        elif cyber:   # cyberspace: slow drifts in the verse, wild moves in the chorus
             import cyber_shot as CY
             loc, tgt, lens = CY.cam_pose(t)
             cam.location = loc
@@ -828,10 +841,12 @@ def main():
         json.dump({"t": times, "root_z": root_z, **S}, open(os.environ["DANCE_DUMP"], "w"))
         return
     LS.setup_look(sc, fps, n, A.res, A.samples, A.blur_steps, A.shutter, A.preview,
-                  on_set=spot if office or yacht or news or cyber else None)
+                  on_set=spot if office or yacht or news or cyber or void else None)
+    if void:   # portrait, like a phone video (--res is its height)
+        sc.render.resolution_x, sc.render.resolution_y = A.res * 9 // 16, A.res
     if news:
         NS.focus(cam)
-    if office or yacht or news or cyber:
+    if office or yacht or news or cyber or void:
         sc.eevee.use_raytracing = sc.eevee.use_fast_gi = not A.preview
     if office:
         OS.preview_lights(A.preview)
@@ -842,6 +857,10 @@ def main():
         sc.frame_end = n // 2
     patch = tuple(float(v) for v in A.patch.split(",")) if A.patch else None
     LS.render(sc, A.out, frames, fps, start, A.stills, A.preview, A.lossless, patch)
+
+
+# the outro's phone video: camera (location, target, relative to her spot) and lens
+VOID_VIEW = ((0.0, -1.25, 0.62), (0.0, 0.0, 0.5), 50)
 
 
 def walk_in(kev, t0, start, n, fps, dist=0.7, dur=1.7, steps_per_s=2.6):
