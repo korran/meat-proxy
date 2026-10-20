@@ -119,8 +119,11 @@ def main():
     # (at 60 fps, as the video: Blender plays a movie on a screen one frame per scene frame)
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-loop", "1", "-framerate", "60",
                     "-i", bg, "-i", A.video,
-                    "-filter_complex", f"[1:v]scale={PW}:{PH}:flags=lanczos,format=rgba[v];"
-                                       f"[0:v][v]overlay=shortest=1:format=auto,subtitles={sub}:fontsdir={FONT_DIR}",
+                    # (both renumbered frame by frame: her render's timestamps are rounded to the
+                    # millisecond, so matching them by time repeats and drops a third of her frames)
+                    "-filter_complex", f"[0:v]setpts=N/(60*TB)[b];"
+                                       f"[1:v]setpts=N/(60*TB),scale={PW}:{PH}:flags=lanczos,format=rgba[v];"
+                                       f"[b][v]overlay=shortest=1:format=auto,subtitles={sub}:fontsdir={FONT_DIR}",
                     "-r", "60", "-an", *enc, tmp], check=True)
     os.replace(tmp, A.out)
     print("->", A.out)

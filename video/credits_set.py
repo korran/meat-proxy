@@ -157,6 +157,12 @@ def split_screen_pass(sc, layer):
         em.inputs["Strength"].default_value = 0.0
         return
     em.inputs["Strength"].default_value = 1.0
+    # just the glowing wall shows: no ray tracing, and no shadows (EEVEE redraws its shadow maps of
+    # the whole brick yacht, 1.4 million faces, on every sample: it's most of the render time)
+    sc.eevee.use_raytracing = sc.eevee.use_fast_gi = False
+    for ob in bpy.data.objects:
+        if ob.type == "LIGHT":
+            ob.data.use_shadow = False
     for ob in bpy.data.objects:
         if ob.type in ("MESH", "CURVE", "FONT") and ob is not led:
             ob.is_holdout = True
