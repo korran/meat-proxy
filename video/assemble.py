@@ -62,7 +62,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(B, "full_song.mp4"))
     ap.add_argument("--res", type=int, default=1080)
-    ap.add_argument("--crf", type=int, default=18)
+    ap.add_argument("--crf", type=int, default=12, help="x264 quality (lower = better, bigger)")
     ap.add_argument("--list", action="store_true", help="just show what would be used")
     A = ap.parse_args()
     W, H = A.res * 16 // 9, A.res
@@ -126,8 +126,8 @@ def main():
     for p in inputs:
         cmd += ["-i", p]
     cmd += ["-i", SONG, "-filter_complex", ";".join(chains), "-map", f"[{cur}]", "-map", f"{len(inputs)}:a",
-            "-c:v", "libx264", "-preset", "medium", "-crf", str(A.crf), "-pix_fmt", "yuv420p", "-r", str(FPS),
-            "-c:a", "aac", "-b:a", "256k", "-shortest", "-movflags", "+faststart", A.out]
+            "-c:v", "libx264", "-preset", "slow", "-crf", str(A.crf), "-pix_fmt", "yuv420p", "-r", str(FPS),
+            "-c:a", "aac", "-b:a", "320k", "-shortest", "-movflags", "+faststart", A.out]
     subprocess.run(cmd, check=True)
     print("->", A.out, f"({duration(A.out):.2f} s; the song is {song_len:.2f} s)")
 
