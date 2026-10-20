@@ -936,6 +936,9 @@ def setup_render(sc, res, preview):
     sc.eevee.shadow_pool_size = "1024"
     sc.render.use_motion_blur = not preview          # (as the performances: 360-degree shutter)
     sc.render.motion_blur_shutter = 1.0
+    # the shutter opens on the frame (not half a frame before it): the iPad's video is then sampled
+    # only from its own frame, so the push-in lands on exactly the frame the cut goes on from
+    sc.render.motion_blur_position = "START"
     sc.eevee.motion_blur_steps = 4
     sc.eevee.motion_blur_max = int(160 * res / 1080)
     if not preview:
