@@ -60,7 +60,7 @@ def stamp(parent, label, x, y, t, color=RED, size=0.5, rot=-0.18, bg=PAPER):
     w = len(label) * size * 0.62 + 0.5
     rect(w, size * 1.7, 0, 0, color, r=0.1, parent=st, z=0.05)
     rect(w - 0.22, size * 1.7 - 0.22, 0, 0, bg, r=0.06, parent=st, z=0.06)
-    text(label, size, 0, -size * 0.36, color, BLACK, align="CENTER", parent=st, z=0.07)
+    text(label, size, 0, 0, color, BLACK, align="CENTER", parent=st, z=0.07, valign="center")
     key(st, SG.T0, scale=0.0)
     key(st, t - EPS, scale=0.0, rot=rot + 0.25)
     key(st, t + 0.1, scale=2.0, rot=rot - 0.05)
@@ -191,7 +191,7 @@ def bill(parent, x, y, s=1.0, z=0.0):
 
 
 def label(parent, body, x, y, size=0.34, color=WHITE, font=SEMI, align="CENTER", z=0.02):
-    return text(body, size, x, y - size * 0.36, color, font, align=align, parent=parent, z=z)
+    return text(body, size, x, y, color, font, align=align, parent=parent, z=z, valign="center")
 
 
 # ---------------------------------------------------------------- graphics, line by line
@@ -296,9 +296,11 @@ def g_senate(ln, t_out):
     t_v, t_w, t_hd = at(ln, "voters"), at(ln, "want"), at(ln, "head")
     for k, (x, body, t) in enumerate(((-2.75, "A HEAD!", t_v), (0.0, "ONE (1)\nHEAD", t_w), (2.75, "HEADS\nPLS", t_hd))):
         sg = group("sign", x, 0, right)
-        rect(0.1, 2.4, 0, -0.6, "#8a5a3b", parent=sg, z=0.01)
+        rect(0.1, 2.4, 0, -0.6, "#8a5a3b", parent=sg, z=-0.01)       # the stick, behind the board
         card(2.6, 2.0, 0, 0.9, sg, color=PAPER)
-        text(body, 0.55, 0, 1.15 if "\n" in body else 0.72, RED, BLACK, align="CENTER", parent=sg, z=0.02)
+        rows = body.split("\n")
+        for m, row in enumerate(rows):                                 # each row centred, the block on the board
+            label(sg, row, 0, 0.9 + 0.36 * (len(rows) - 1) - 0.72 * m, 0.55, RED, BLACK)
         pop_in(sg, t)
         for m in range(int((t_out - t) / 0.27)):      # bobbing on the beat
             tb = t + 0.3 + 0.27 * m
@@ -367,37 +369,35 @@ def g_fuse(ln, t_out):
     r = R()
     cx, w = r["cx"], r["w"]
     g = group("fuse", cx, 0)
-    top = group("top", 0, 1.45, g)
+    # the wiring sits behind the boxes (z below them): HOLDCO -> a bus -> each division -> its Kevin
+    top = group("top", 0, 1.6, g)
     card(4.8, 1.0, 0, 0, top, edge=LILAC)
     label(top, "HOLDCO (me)", 0, 0, 0.55, WHITE, BLACK)
     pop_in(top, ln["start"] - 0.2)
     divs = ("CLOUD", "ADS", "ROBOTS", "LEGAL")
     sp = min(3.0, (w - 1.0) / 4)
-    rect(sp * 3, 0.06, 0, 0.7, LILAC, parent=g, z=0.005)
-    rect(0.06, 0.4, 0, 0.9, LILAC, parent=g, z=0.005)
+    rect(sp * 3 + 0.08, 0.08, 0, 0.78, LILAC, parent=g, z=-0.02)          # the bus
+    rect(0.08, 0.4, 0, 0.98, LILAC, parent=g, z=-0.02)                   # HOLDCO down to it
     t_k, t_d, t_f, t_b = at(ln, "Kevin"), at(ln, "division,"), at(ln, "fuse"), at(ln, "blow,")
     kevs = []
     for k, d in enumerate(divs):
         x = (k - 1.5) * sp
-        col = group("div", x, 0, g)
-        rect(0.06, 0.3, 0, 0.55, LILAC, parent=col, z=0.005)
+        col = group("div", x, 0.15, g)
+        rect(0.08, 0.65, 0, 0.32, LILAC, parent=col, z=-0.02)            # bus down to the box
+        rect(0.08, 0.75, 0, -0.75, "#c9ced6", parent=col, z=-0.02)       # the box down to its Kevin
         card(2.65, 0.85, 0, 0.0, col, color=NAVY2)
         label(col, d, 0, 0.0, 0.5, LILAC, BLACK)
         pop_in(col, t_d - 0.3 + 0.1 * k)
-        kv, _, _ = kevin(g, x, -2.55, 0.95, z=0.02)
+        kv, _, _ = kevin(g, x, -2.85, 0.95, z=0.02)
         pop_in(kv, t_k + 0.12 * k)
         kevs.append(kv)
-        tag = group("amp", x, -3.25, g)
+        tag = group("amp", x, -3.5, g)
         rect(1.4, 0.65, 0, 0, YELLOW, r=0.08, parent=tag, z=0.03)
         label(tag, "15A", 0, 0, 0.48, INK, BLACK, z=0.04)
         pop_in(tag, t_f + 0.1 * k)
-    wire = rect(sp * 3 + 1.4, 0.07, 0, -1.65, "#c9ced6", parent=g, z=0.001)
-    hide_until(wire, t_f)
-    key(wire, t_f, scale=(0, 1, 1))
-    key(wire, t_f + 0.3, scale=(1, 1, 1))
     # the second one blows: a flash, he's left charred and smoking
     x = -0.5 * sp
-    boom = group("boom", x, -1.5, g)
+    boom = group("boom", x, -1.8, g)
     boom.location.z = 0.2
     pts = [((1.3 if k % 2 else 0.55) * math.cos(math.tau * k / 16), (1.3 if k % 2 else 0.55) * math.sin(math.tau * k / 16))
            for k in range(16)]
@@ -407,7 +407,7 @@ def g_fuse(ln, t_out):
     key(boom, t_b - EPS, scale=0.0)
     key(boom, t_b + 0.08, scale=1.4)
     key(boom, t_b + 0.3, scale=0.0)
-    burnt, _, _ = kevin(g, x, -2.55, 0.95, z=0.025, charred=True)
+    burnt, _, _ = kevin(g, x, -2.85, 0.95, z=0.025, charred=True)
     visible(burnt, t_b + 0.08)
     key(kevs[1], t_b + 0.08 - EPS, scale=1.0)
     key(kevs[1], t_b + 0.08, scale=0.0)
@@ -579,8 +579,8 @@ def g_gig(ln, t_out):
     for k, (a, b, t) in enumerate(jobs):
         jb = group("job", 0, 1.2 - 1.2 * k, ph)
         rect(4.0, 1.05, 0, 0, WHITE, r=0.12, parent=jb, z=0.03)
-        text(a, 0.44, -1.85, -0.16, INK, BOLD, parent=jb, z=0.04)
-        text(b, 0.44, 1.85, -0.16, "#2fbf71", BLACK, align="RIGHT", parent=jb, z=0.04)
+        text(a, 0.44, -1.85, 0, INK, BOLD, parent=jb, z=0.04, valign="center")
+        text(b, 0.44, 1.85, 0, "#2fbf71", BLACK, align="RIGHT", parent=jb, z=0.04, valign="center")
         pop_in(jb, t, 0.18)
     acc = group("accept", 0, -2.3, ph)
     rect(3.8, 0.85, 0, 0, "#2fbf71", r=0.42, parent=acc, z=0.03)
@@ -719,11 +719,7 @@ def g_grease(ln, t_out):
     key(doc, SG.T0, loc=(10.0, -0.8))
     key(doc, t_w - 0.25, loc=(10.0, -0.8))
     key(doc, t_w + 0.05, loc=(3.3, -0.8))
-    sig = text("Sen. Kevin", 0.62, -1.4, -1.5, "#2a4fb8", SCRIPT, parent=doc, z=0.02)
-    key(sig, SG.T0, scale=(0, 1, 1))
-    key(sig, t_sg - 0.05, scale=(0, 1, 1))
-    key(sig, t_sg + 0.35, scale=(1, 1, 1))
-    stamp(doc, "APPROVED", 0.2, -0.3, t_sg + 0.45, MINT, 0.55, rot=-0.2)
+    stamp(doc, "PAID", 0.0, -1.2, t_sg, RED, 0.8, rot=-0.16)
     show(g, ln["start"] - 0.3, t_out)
 
 

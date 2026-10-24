@@ -444,7 +444,7 @@ def phrase(words, t_in, t_out, style, spoken=False, idx=0):
     caps_h = [max(i["cap"] for i in r) for r in rows]
     gap_y = 0.32
     height = sum(c * s_ for c, s_ in zip(caps_h, sizes)) + gap_y * sum(sizes[1:]) * 0.7
-    shrink = min(1.0, (TOP - BOTTOM) / height)
+    shrink = min(1.0, (TOP - BOTTOM) / (height * (1.1 if W > 16 else 1.0)))   # (the wall: room for each word's pop)
     sizes = [s_ * shrink for s_ in sizes]
     height *= shrink
     y = TOP - (TOP - BOTTOM - height) / 2           # top of the first row
@@ -481,19 +481,20 @@ def phrase(words, t_in, t_out, style, spoken=False, idx=0):
         key(piv, w["start"] - 0.02, scale=s_)
         key(piv, w["start"] + 0.07, scale=s_ * 1.08)
         key(piv, w["start"] + 0.22, scale=s_)
-    # pivot the phrase on its own centre (so the tilt doesn't push one end off the bottom)
+    # pivot the phrase on its own centre (so the tilt doesn't push either end off the screen)
     cy = (TOP + BOTTOM) / 2
     for it in items:
         for fc in it["piv"].animation_data.action.fcurves:
-            if fc.data_path == "location" and fc.array_index == 1:
+            if fc.data_path == "location" and fc.array_index in (0, 1):
+                d = cy if fc.array_index == 1 else LX
                 for kp in fc.keyframe_points:
-                    kp.co.y -= cy
-                    kp.handle_left.y -= cy
-                    kp.handle_right.y -= cy
+                    kp.co.y -= d
+                    kp.handle_left.y -= d
+                    kp.handle_right.y -= d
     if style == "tilt":
         g.rotation_euler.z = 0.045 * side
-    key(g, t_out - 0.001, loc=(0, cy), scale=1.0)
-    key(g, t_out + 0.18, loc=(0, cy + 1.0), scale=(1.0, 0.0, 1.0))
+    key(g, t_out - 0.001, loc=(LX, cy), scale=1.0)
+    key(g, t_out + 0.18, loc=(LX, cy + 1.0), scale=(1.0, 0.0, 1.0))
 
 
 def lyric_phrases(ln, t_out, words=None, spoken=False, counter=[0]):

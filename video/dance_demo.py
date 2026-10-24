@@ -348,9 +348,9 @@ def main():
                                                   help="--set void: just her (no pedestal, floor or cubes), on a "
                                                        "transparent background (a lossless RGBA .mkv)"),
                                   ap.add_argument("--pass", dest="layer", choices=("main", "screen"),
-                                                  help="--set office: main (the TV dark, its light still on the room) or "
-                                                       "screen (only the TV, in plain sRGB, so its pixels are the graphics "
-                                                       "video's own; everything else a holdout); added together in assembly"),
+                                                  help="--set office / yacht: main (the TV / LED wall dark) or screen (only "
+                                                       "it, in plain sRGB, so its pixels are the graphics video's own; "
+                                                       "everything else a holdout); added together in assembly"),
                                   ap.add_argument("--half", action="store_true",
                                                   help="render every other frame (30 fps) for a quicker preview")))
     P = PARTS[A.part]
@@ -866,8 +866,8 @@ def main():
         sc.eevee.use_raytracing = sc.eevee.use_fast_gi = not A.preview
     if office:
         OS.preview_lights(A.preview)
-    if office and A.layer:
-        split_tv_pass(sc, A.layer)
+    if (office or yacht) and A.layer:
+        split_tv_pass(sc, A.layer, "slide" if office else "led")
     if A.flat:
         LS.flat_look(sc)
     if A.half:   # play the animation twice as fast at half the frame rate: every other frame
@@ -882,10 +882,11 @@ VOID_VIEW = ((0.0, -1.25, 0.62), (0.0, 0.0, 0.5), 50)
 VOID_WIDE_VIEW = ((0.0, -3.9, 0.42), (0.0, 0.0, 0.36), 50)   # (2:1: her whole body, room either side)
 
 
-def split_tv_pass(sc, layer):
-    """The office TV ("slide") as two passes: main (the TV dark) or screen (only the TV, in plain
-    sRGB, everything else a holdout; no shadows or ray tracing, which only the room needs)."""
-    tv = bpy.data.objects["slide"]
+def split_tv_pass(sc, layer, name):
+    """A set's screen (the office TV "slide", the yacht's LED wall "led") as two passes: main (the
+    screen dark) or screen (only the screen, in plain sRGB, everything else a holdout; no shadows
+    or ray tracing, which only the room needs)."""
+    tv = bpy.data.objects[name]
     em = next(nd for nd in tv.data.materials[0].node_tree.nodes if nd.type == "EMISSION")
     sc.render.motion_blur_position = "START"     # (the video sampled from its own frame only)
     if layer == "main":
