@@ -29,7 +29,9 @@ FPS = 60
 # "add": a screen pass (in plain sRGB, so its pixels are its video's own) added on top; "over": a
 # transparent overlay laid over it.
 SECTIONS = [
-    ("intro, verse 1, chorus 1 (office)", ["office_v1c1_final.mkv", "office_v1c1_final.mp4"], 0.0, 0.0, 66.4, [], 0),
+    # the office TV's screen pass added (so the graphics are the video's own pixels)
+    ("intro, verse 1, chorus 1 (office)", ["office_v1c1_final.mkv", "office_v1c1_final.mp4"], 0.0, 0.0, 66.4,
+     [("add", ["office_v1c1_screen_final.mkv"])], 0),
     ("verse 2, chorus 2 (yacht)", ["yacht_v2c2_final.mkv", "yacht_v2c2_preview.mp4"], 66.4, 66.4, 129.4, [], 0),
     ("bridge (SINN)", ["news_bridge_final.mkv", "news_bridge_preview.mp4"], 129.4, 129.4, 148.6,
      [("over", ["news_overlay_bridge_final.mkv", "news_overlay_bridge.mkv"])], 0),

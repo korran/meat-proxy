@@ -501,7 +501,8 @@ def render(sc, out, frames, fps, start, stills=None, preview=False, lossless=Fal
         im = sc.render.image_settings
         im.file_format = "FFMPEG"
         sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
-        im.color_mode = "RGBA" if sc.render.film_transparent else "RGB"     # (after the codec: it sets the choices)
+        im.color_mode = ("RGBA" if sc.render.film_transparent and not sc.view_settings.view_transform == "Standard"
+                         else "RGB")     # (after the codec: it sets the choices; a screen pass is plain RGB)
         sc.render.ffmpeg.audio_codec = "NONE"
         sc.render.use_file_extension = False
         import render_out

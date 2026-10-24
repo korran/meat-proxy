@@ -347,6 +347,10 @@ def main():
                                   ap.add_argument("--bare", action="store_true",
                                                   help="--set void: just her (no pedestal, floor or cubes), on a "
                                                        "transparent background (a lossless RGBA .mkv)"),
+                                  ap.add_argument("--pass", dest="layer", choices=("main", "screen"),
+                                                  help="--set office: main (the TV dark, its light still on the room) or "
+                                                       "screen (only the TV, in plain sRGB, so its pixels are the graphics "
+                                                       "video's own; everything else a holdout); added together in assembly"),
                                   ap.add_argument("--half", action="store_true",
                                                   help="render every other frame (30 fps) for a quicker preview")))
     P = PARTS[A.part]
@@ -862,6 +866,8 @@ def main():
         sc.eevee.use_raytracing = sc.eevee.use_fast_gi = not A.preview
     if office:
         OS.preview_lights(A.preview)
+    if office and A.layer:
+        split_tv_pass(sc, A.layer)
     if A.flat:
         LS.flat_look(sc)
     if A.half:   # play the animation twice as fast at half the frame rate: every other frame
@@ -874,6 +880,30 @@ def main():
 # the outro's phone video: camera (location, target, relative to her spot) and lens
 VOID_VIEW = ((0.0, -1.25, 0.62), (0.0, 0.0, 0.5), 50)
 VOID_WIDE_VIEW = ((0.0, -3.9, 0.42), (0.0, 0.0, 0.36), 50)   # (2:1: her whole body, room either side)
+
+
+def split_tv_pass(sc, layer):
+    """The office TV ("slide") as two passes: main (the TV dark) or screen (only the TV, in plain
+    sRGB, everything else a holdout; no shadows or ray tracing, which only the room needs)."""
+    tv = bpy.data.objects["slide"]
+    em = next(nd for nd in tv.data.materials[0].node_tree.nodes if nd.type == "EMISSION")
+    sc.render.motion_blur_position = "START"     # (the video sampled from its own frame only)
+    if layer == "main":
+        em.inputs["Strength"].default_value = 0.0
+        return
+    em.inputs["Strength"].default_value = 1.0
+    for ob in bpy.data.objects:
+        if ob.type in ("MESH", "CURVE", "FONT") and ob is not tv:
+            ob.is_holdout = True
+        if ob.type == "LIGHT":
+            ob.data.use_shadow = False
+    sc.eevee.use_raytracing = sc.eevee.use_fast_gi = False
+    if sc.world:
+        sc.world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.0
+    sc.render.film_transparent = True
+    sc.view_settings.view_transform = "Standard"
+    sc.view_settings.look = "None"
+    sc.view_settings.exposure = 0.0
 
 
 def walk_in(kev, t0, start, n, fps, dist=0.7, dur=1.7, steps_per_s=2.6):

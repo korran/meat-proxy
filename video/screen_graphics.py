@@ -24,6 +24,8 @@ import sys
 import bpy
 from mathutils import Vector
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))     # (for render_out)
+
 FPS = 60
 W, H = 16.0, 9.0
 BOLD = "/usr/share/fonts/opentype/inter/Inter-ExtraBold.otf"
