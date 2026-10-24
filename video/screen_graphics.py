@@ -102,7 +102,12 @@ def group(name, x=0.0, y=0.0, parent=None):
     return link(e, parent)
 
 
-def text(body, size, x, y, color, font=BOLD, align="LEFT", parent=None, own=False, z=0.02, name="txt"):
+def text(body, size, x, y, color, font=BOLD, align="LEFT", parent=None, own=False, z=0.02, name="txt",
+         valign="baseline"):
+    """valign: "baseline" (y is the baseline) or "center" (y is where the middle of the capitals
+    goes: for labels in boxes)."""
+    if valign == "center":
+        y -= cap_height(font) * size / 2
     cu = bpy.data.curves.new(name, "FONT")
     cu.body = body
     cu.font = bpy.data.fonts.load(font, check_existing=True)
@@ -532,12 +537,12 @@ def background():
 def chrome(lines, beats):
     """Header, a slide counter that ticks over with every line, and an accent bar that pulses on
     the half-time beats."""
-    text("Q3 STRATEGY OFFSITE  ·  CONFIDENTIAL", 0.26, -7.2, 3.95, LILAC, SEMI)
-    circle(0.09, 7.2, 4.04, CORAL)
+    text("Q3 STRATEGY OFFSITE  ·  CONFIDENTIAL", 0.34, -7.2, 3.9, LILAC, SEMI)
+    circle(0.11, 7.2, 4.02, CORAL)
     for k, ln in enumerate(lines):
         t_a = ln["start"] - 0.35
         t_b = lines[k + 1]["start"] - 0.35 if k + 1 < len(lines) else END + 1
-        c = text(f"SLIDE {k + 2:02d} / 212", 0.24, 7.2, -4.2, "#7f8fc8", SEMI, align="RIGHT")
+        c = text(f"SLIDE {k + 2:02d} / 212", 0.32, 7.2, -4.22, "#7f8fc8", SEMI, align="RIGHT")
         hide_until(c, t_a)
         pop_in(c, t_a, 0.15)
         key(c, t_b - 0.001, scale=1.0)
@@ -559,8 +564,8 @@ def at(ln, word, k=0):
 
 def card(w, h, x, y, parent, color=NAVY2, edge=None):
     if edge:
-        rect(w + 0.08, h + 0.08, x, y, edge, r=0.22, parent=parent, z=-0.01)
-    return rect(w, h, x, y, color, r=0.18, parent=parent)
+        rect(w + 0.1, h + 0.1, x, y, edge, r=0.26, parent=parent, z=-0.01)
+    return rect(w, h, x, y, color, r=0.22, parent=parent)
 
 
 def show(g, t_in, t_out, dur=0.25):
@@ -568,29 +573,46 @@ def show(g, t_in, t_out, dur=0.25):
     pop_out(g, t_out)
 
 
+# Every line's graphic is centred on GY, in the band above the lyrics (which start about y -1.0);
+# sized to be read on a phone: nothing smaller than about 0.42, key words and numbers 0.6 and up.
+# Each is then scaled up as far as it fits that band (FIT: at most about 15.4 wide, 4.4 tall).
+GY = 1.55
+FIT = {"okrs": 1.0, "ships": 1.13, "paste": 1.05, "check": 1.15, "org": 1.03, "budget": 1.22, "logs": 1.15,
+       "invoice": 1.16, "merge": 1.0, "table": 1.08, "hire": 1.07, "loop": 1.1, "contract": 1.1}
+
+
+def stage(name):
+    """A line's graphic: a group centred on GY, inside a parent that scales it to fit (FIT), so
+    its own pop-in and pop-out keys still run 0 .. 1."""
+    s = FIT.get(name, 1.0)
+    fit = group(name + "_fit", 0, GY)
+    fit.scale = (s, s, 1.0)
+    return group(name, 0, 0, fit)
+
+
 def g_okrs(ln, t_out):
     """OKR cards pop in; a roadmap bar races to a JUNE flag."""
-    g = group("okrs", 0, 2.2)
+    g = stage("okrs")
     t0 = at(ln, "OKRs")
     for k, label in enumerate(("OKR 1  Synergy ↑", "OKR 2  Velocity ↑↑", "OKR 3  Kevins: TBD")):
-        c = group("okr", -4.8 + 4.8 * k, 0.75, g)
-        card(4.2, 1.0, 0, 0, c)
-        rect(0.34, 0.34, -1.75, 0, YELLOW, r=0.06, parent=c, z=0.01)
-        text(label, 0.32, -1.4, -0.12, WHITE, SEMI, parent=c)
+        c = group("okr", -5.2 + 5.2 * k, 1.15, g)
+        card(5.0, 1.3, 0, 0, c)
+        rect(0.46, 0.46, -2.05, 0, YELLOW, r=0.08, parent=c, z=0.01)
+        text(label, 0.46, -1.62, 0, WHITE, SEMI, parent=c, valign="center")
         pop_in(c, t0 + 0.14 * k)
-    road = group("road", -6.3, -0.75, g)
-    rect(12.6, 0.12, 0, 0, "#3a4280", anchor="left", parent=road)
-    fill = rect(12.6, 0.12, 0, 0, CORAL, anchor="left", parent=road, z=0.01)
+    road = group("road", -6.6, -0.75, g)
+    rect(12.6, 0.18, 0, 0, "#3a4280", anchor="left", parent=road)
+    fill = rect(12.6, 0.18, 0, 0, CORAL, anchor="left", parent=road, z=0.01)
     t_r, t_j = at(ln, "roadmap"), at(ln, "June")
     key(fill, T0, scale=(0.0, 1, 1))
     key(fill, t_r, scale=(0.0, 1, 1))
     key(fill, t_j, scale=(1.0, 1, 1))
     for m, mon in enumerate(("JAN", "FEB", "MAR", "APR", "MAY")):
-        text(mon, 0.24, 0.1 + 2.5 * m, -0.45, LILAC, SEMI, parent=road)
+        text(mon, 0.42, 0.1 + 2.5 * m, -0.75, LILAC, SEMI, parent=road)
     flag = group("june", 12.6, 0, road)
-    rect(0.07, 1.0, 0, 0.5, WHITE, parent=flag)
-    poly([(0.04, 1.0), (1.2, 0.8), (0.04, 0.6)], CORAL, parent=flag)
-    text("JUNE", 0.26, 0.18, 0.72, WHITE, BLACK, parent=flag)
+    rect(0.09, 0.95, 0, 0.47, WHITE, parent=flag)
+    poly([(0.05, 0.95), (1.3, 0.72), (0.05, 0.49)], CORAL, parent=flag)
+    text("JUNE", 0.5, -0.05, -0.8, WHITE, BLACK, parent=flag)
     key(flag, T0, loc=(12.6, 3.0), scale=0.0)
     key(flag, t_j - 0.15, loc=(12.6, 3.0), scale=0.0)
     key(flag, t_j, loc=(12.6, 0.0), scale=1.0)
@@ -601,51 +623,51 @@ def g_okrs(ln, t_out):
 
 def g_ships(ln, t_out):
     """Q3 deliverables: the progress bar crawls, then slams to 100% on 'Tuesday'."""
-    g = group("ships", 0, 2.0)
-    card(11.0, 2.6, 0, 0, g, edge="#3a4280")
-    text("Q3 DELIVERABLES", 0.34, -5.0, 0.7, LILAC, BLACK, parent=g)
-    text("assigned to: agent", 0.26, 5.0, 0.72, "#7f8fc8", SEMI, align="RIGHT", parent=g)
-    rect(10.0, 0.42, -5.0, -0.15, INK, r=0.2, anchor="left", parent=g)
-    bar = rect(10.0, 0.42, -5.0, -0.15, CORAL, r=0.2, anchor="left", parent=g, z=0.01)
+    g = stage("ships")
+    card(13.6, 3.6, 0, 0, g, edge="#3a4280")
+    text("Q3 DELIVERABLES", 0.56, -6.2, 1.0, LILAC, BLACK, parent=g)
+    text("assigned to: agent", 0.46, 6.2, 1.02, "#9aa8de", SEMI, align="RIGHT", parent=g)
+    rect(12.4, 0.62, -6.2, 0.0, INK, r=0.3, anchor="left", parent=g)
+    bar = rect(12.4, 0.62, -6.2, 0.0, CORAL, r=0.3, anchor="left", parent=g, z=0.01)
     t_s, t_t = at(ln, "ships"), at(ln, "Tuesday")
     key(bar, T0, scale=(0.02, 1, 1))
     key(bar, t_s, scale=(0.02, 1, 1))
     key(bar, t_t - 0.1, scale=(0.12, 1, 1))
     key(bar, t_t + 0.08, scale=(1.0, 1, 1))
-    done = group("done", 0, -0.85, g)
-    text("100%  ✓  Done! (also did Q4)", 0.36, 0, -0.12, MINT, BLACK, align="CENTER", parent=done)
+    done = group("done", 0, -1.15, g)
+    text("100%  ✓  Done! (also did Q4)", 0.62, 0, -0.2, MINT, BLACK, align="CENTER", parent=done)
     pop_in(done, t_t + 0.1)
     show(g, ln["start"] - 0.3, t_out)
 
 
 def g_paste(ln, t_out):
     """A wall of code nobody reads, then ⌘V into the deck."""
-    g = group("paste", 0, 2.0)
-    code = group("code", -3.6, 0, g)
-    card(6.4, 3.2, 0, 0, code, color=INK, edge="#3a4280")
+    g = stage("paste")
+    code = group("code", -3.9, 0, g)
+    card(7.2, 3.9, 0, 0, code, color=INK, edge="#3a4280")
     t0, t_p = ln["start"], at(ln, "paste")
     import random
     rng = random.Random(4)
     for k in range(12):
-        y = 1.3 - 0.235 * k
-        w = rng.uniform(1.5, 5.4)
-        ind = 0.4 * rng.randint(0, 3)
-        c = rect(w - ind, 0.11, -2.9 + ind, y, rng.choice((LILAC, "#59638f", MINT, CORAL, "#59638f")), anchor="left",
+        y = 1.6 - 0.29 * k
+        w = rng.uniform(1.8, 6.1)
+        ind = 0.45 * rng.randint(0, 3)
+        c = rect(w - ind, 0.14, -3.25 + ind, y, rng.choice((LILAC, "#59638f", MINT, CORAL, "#59638f")), anchor="left",
                  parent=code)
         grow = t0 + 0.12 * k
         key(c, T0, scale=(0.0, 1, 1))
         key(c, grow, scale=(0.0, 1, 1))
         key(c, grow + 0.1, scale=(1.0, 1, 1))
-    deck = group("deck", 3.8, 0, g)
-    card(4.6, 2.9, 0, 0, deck, color=PAPER)
-    text("Q3 Strategy", 0.3, -1.95, 0.95, INK, BLACK, parent=deck)
-    blob = rect(3.9, 1.6, 0, -0.35, "#59638f", r=0.08, parent=deck, z=0.01)
+    deck = group("deck", 4.2, 0, g)
+    card(5.6, 3.6, 0, 0, deck, color=PAPER)
+    text("Q3 Strategy", 0.58, -2.4, 1.05, INK, BLACK, parent=deck)
+    blob = rect(4.8, 1.85, 0, -0.45, "#59638f", r=0.1, parent=deck, z=0.01)
     key(blob, T0, scale=0.0)
     key(blob, t_p + 0.15, scale=0.0)
     key(blob, t_p + 0.3, scale=1.0)
-    keycap = group("cmdv", 0.2, 0.0, g)
-    card(1.7, 1.5, 0, 0, keycap, color=WHITE, edge="#7f8fc8")
-    text("⌘V", 0.62, 0, -0.22, INK, BLACK, align="CENTER", parent=keycap)
+    keycap = group("cmdv", 0.25, 0.0, g)
+    card(2.1, 1.85, 0, 0, keycap, color=WHITE, edge="#7f8fc8")
+    text("⌘V", 0.8, 0, 0, INK, BLACK, align="CENTER", parent=keycap, valign="center")
     key(keycap, T0, scale=0.0)
     key(keycap, t_p - 0.001, scale=0.0, rot=0.3)
     key(keycap, t_p + 0.1, scale=1.25, rot=-0.08)
@@ -657,84 +679,84 @@ def g_paste(ln, t_out):
 
 def g_check(ln, t_out):
     """'Is this safe?' in a speech bubble; the answer is a cheque, stamped SEVERANCE."""
-    g = group("check", 0, 2.0)
-    bub = group("bubble", -3.6, 0.4, g)
-    card(4.6, 1.3, 0, 0, bub, color=WHITE)
-    poly([(-1.4, -0.6), (-0.6, -0.6), (-1.7, -1.2)], WHITE, parent=bub)
-    text("Is this safe?", 0.5, 0, -0.17, INK, ITALIC, align="CENTER", parent=bub)
+    g = stage("check")
+    bub = group("bubble", -3.4, 0.45, g)
+    card(6.0, 1.7, 0, 0, bub, color=WHITE)
+    poly([(-1.8, -0.8), (-0.8, -0.8), (-2.2, -1.55)], WHITE, parent=bub)
+    text("Is this safe?", 0.72, 0, 0, INK, ITALIC, align="CENTER", parent=bub, valign="center")
     pop_in(bub, at(ln, "Is"))
     pop_out(bub, at(ln, "got") - 0.15)
-    chq = group("cheque", 1.0, 0.0, g)
-    card(8.2, 2.9, 0, 0, chq, color=PAPER)
-    rect(8.2, 0.35, 0, 1.05, "#cfe7d5", parent=chq, z=0.01)
-    text("PAY TO:  the last guy who asked", 0.3, -3.8, 0.25, INK, SEMI, parent=chq)
-    text("$ 50,000.00", 0.62, 3.8, -0.45, INK, BLACK, align="RIGHT", parent=chq)
-    text("memo: thanks, bye", 0.26, -3.8, -1.05, "#59638f", ITALIC, parent=chq)
+    chq = group("cheque", 0.6, 0.0, g)
+    card(11.2, 3.8, 0, 0, chq, color=PAPER)
+    rect(11.2, 0.45, 0, 1.35, "#cfe7d5", parent=chq, z=0.01)
+    text("PAY TO:  the last guy who asked", 0.48, -5.2, 0.4, INK, SEMI, parent=chq)
+    text("$ 50,000.00", 0.86, 5.2, -0.6, INK, BLACK, align="RIGHT", parent=chq)
+    text("memo: thanks, bye", 0.44, -5.2, -1.4, "#59638f", ITALIC, parent=chq)
     t_c = at(ln, "got")                # the cheque arrives with "got", the stamp on "handshake"
     t_h = at(ln, "handshake")
-    key(chq, T0, loc=(12.0, 0.0))
-    key(chq, t_c - 0.2, loc=(12.0, 0.0))
-    key(chq, t_c + 0.05, loc=(1.0, 0.0))
-    stamp = group("stamp", 2.0, -0.1, chq)
-    rect(3.6, 0.95, 0, 0, RED, r=0.1, parent=stamp, z=0.03)
-    rect(3.3, 0.7, 0, 0, PAPER, r=0.06, parent=stamp, z=0.04)
-    text("SEVERANCE", 0.46, 0, -0.17, RED, BLACK, align="CENTER", parent=stamp, z=0.05)
+    key(chq, T0, loc=(14.0, 0.0))
+    key(chq, t_c - 0.2, loc=(14.0, 0.0))
+    key(chq, t_c + 0.05, loc=(0.6, 0.0))
+    stamp = group("stamp", 0.6, -1.05, chq)
+    rect(4.8, 1.25, 0, 0, RED, r=0.12, parent=stamp, z=0.03)
+    rect(4.4, 0.92, 0, 0, PAPER, r=0.08, parent=stamp, z=0.04)
+    text("SEVERANCE", 0.62, 0, 0, RED, BLACK, align="CENTER", parent=stamp, z=0.05, valign="center")
     key(stamp, T0, scale=0.0)
     key(stamp, t_h - 0.001, scale=0.0)
-    key(stamp, t_h + 0.1, scale=2.2, rot=-0.15)
-    key(stamp, t_h + 0.22, scale=1.0, rot=-0.22)
+    key(stamp, t_h + 0.1, scale=2.0, rot=-0.15)
+    key(stamp, t_h + 0.22, scale=1.0, rot=-0.12)
     show(g, ln["start"] - 0.3, t_out)
 
 
 def g_org(ln, t_out):
     """Org chart: KEVIN (intern) drops in, then gets stamped HEAD OF AI RISK."""
-    g = group("org", 0, 2.1)
-    top = group("me", 0, 1.1, g)
-    card(3.6, 0.9, 0, 0, top, edge=LILAC)
-    text("ME  ·  VP of Vision", 0.32, 0, -0.12, WHITE, SEMI, align="CENTER", parent=top)
-    rect(0.06, 0.8, 0, 0.25, LILAC, parent=g)
+    g = stage("org")
+    top = group("me", 0, 1.35, g)
+    card(5.4, 1.15, 0, 0, top, edge=LILAC)
+    text("ME  ·  VP of Vision", 0.48, 0, 0, WHITE, SEMI, align="CENTER", parent=top, valign="center")
+    rect(0.08, 0.75, 0, 0.42, LILAC, parent=g)
     t_k, t_h = at(ln, "Kevin"), at(ln, "Head")
-    kev = group("kev", 0, -0.55, g)
-    card(4.4, 1.5, 0, 0, kev, color=CORAL)
-    text("KEVIN", 0.6, 0, 0.0, WHITE, BLACK, align="CENTER", parent=kev)
-    text("intern", 0.3, 0, -0.5, INK, SEMI, align="CENTER", parent=kev)
+    kev = group("kev", 0, -0.75, g)
+    card(5.2, 2.0, 0, 0, kev, color=CORAL)
+    text("KEVIN", 0.86, 0, 0.3, WHITE, BLACK, align="CENTER", parent=kev, valign="center")
+    text("intern", 0.46, 0, -0.5, INK, SEMI, align="CENTER", parent=kev, valign="center")
     key(kev, T0, loc=(0, 3.5), scale=0.0)
     key(kev, t_k - 0.12, loc=(0, 3.5), scale=0.0)
-    key(kev, t_k + 0.08, loc=(0, -0.55), scale=1.0)
-    tag = group("tag", 3.1, -0.2, g)
-    rect(3.6, 0.6, 0, 0, YELLOW, r=0.12, parent=tag, z=0.02)
-    text("HEAD OF AI RISK", 0.3, 0, -0.11, INK, BLACK, align="CENTER", parent=tag, z=0.03)
+    key(kev, t_k + 0.08, loc=(0, -0.75), scale=1.0)
+    tag = group("tag", 3.7, -0.3, g)
+    rect(5.2, 0.85, 0, 0, YELLOW, r=0.14, parent=tag, z=0.02)
+    text("HEAD OF AI RISK", 0.48, 0, 0, INK, BLACK, align="CENTER", parent=tag, z=0.03, valign="center")
     key(tag, T0, scale=0.0)
     key(tag, t_h - 0.001, scale=0.0, rot=0.4)
     key(tag, t_h + 0.12, scale=1.3, rot=0.05)
     key(tag, t_h + 0.24, scale=1.0, rot=0.12)
-    for x in (-5.0, 5.0):   # empty seats in the org chart
-        e = group("empty", x, -0.55, g)
-        card(2.6, 1.0, 0, 0, e, color="#232a5c")
-        text("(agent)", 0.28, 0, -0.1, "#59638f", SEMI, align="CENTER", parent=e)
+    for x in (-5.7, 5.7):   # empty seats in the org chart
+        e = group("empty", x, -0.75, g)
+        card(3.6, 1.3, 0, 0, e, color="#232a5c")
+        text("(agent)", 0.46, 0, 0, "#6f7bb0", SEMI, align="CENTER", parent=e, valign="center")
     show(g, ln["start"] - 0.3, t_out)
 
 
 def g_budget(ln, t_out):
     """A $10 budget, and a stopwatch for the tenure that's spinning already."""
-    g = group("budget", 0, 2.0)
-    money = group("money", -3.0, 0, g)
-    text("BUDGET", 0.3, 0, 1.0, LILAC, BLACK, align="CENTER", parent=money)
-    big = text("$10", 1.9, 0, -0.7, MINT, BLACK, align="CENTER", parent=money)
-    text(".00", 0.6, 1.75, -0.65, MINT, BLACK, parent=money)
+    g = stage("budget")
+    money = group("money", -3.2, 0.1, g)
+    text("BUDGET", 0.52, 0, 1.35, LILAC, BLACK, align="CENTER", parent=money)
+    text("$10", 2.4, 0, -0.85, MINT, BLACK, align="CENTER", parent=money)
+    text(".00", 0.8, 2.2, -0.8, MINT, BLACK, parent=money)
     t_d = at(ln, "ten")
     key(money, T0, scale=0.0)
     key(money, t_d - 0.001, scale=0.0)
     key(money, t_d + 0.12, scale=1.2)
     key(money, t_d + 0.3, scale=1.0)
-    watch = group("watch", 3.6, -0.1, g)
-    circle(1.25, 0, 0, WHITE, parent=watch)
-    circle(1.1, 0, 0, INK, parent=watch, z=0.01)
-    rect(0.4, 0.3, 0, 1.38, WHITE, parent=watch)
+    watch = group("watch", 3.9, 0.3, g)
+    circle(1.45, 0, 0, WHITE, parent=watch)
+    circle(1.28, 0, 0, INK, parent=watch, z=0.01)
+    rect(0.5, 0.36, 0, 1.6, WHITE, parent=watch)
     hand = group("hand", 0, 0, watch)
-    rect(0.07, 0.95, 0, 0.42, CORAL, parent=hand, z=0.02)
-    circle(0.1, 0, 0, CORAL, parent=watch, z=0.03)
-    text("TENURE", 0.3, 0, -1.75, LILAC, BLACK, align="CENTER", parent=watch)
+    rect(0.09, 1.1, 0, 0.5, CORAL, parent=hand, z=0.02)
+    circle(0.12, 0, 0, CORAL, parent=watch, z=0.03)
+    text("TENURE", 0.52, 0, -2.15, LILAC, BLACK, align="CENTER", parent=watch)
     t_t = at(ln, "tenure")
     pop_in(watch, t_t - 0.1)
     key(hand, t_t, rot=0.0)
@@ -744,22 +766,22 @@ def g_budget(ln, t_out):
 
 def g_logs(ln, t_out):
     """Spoken: a growth arrow shoots up; then the folder nobody may open."""
-    g = group("logs", 0, 2.0)
-    arrow = group("growth", -4.2, -1.3, g)
-    pts = [(0, 0), (1.2, 0.5), (2.0, 0.3), (3.4, 2.4)]
-    poly(pts, MINT, parent=arrow, width=0.16)
-    poly([(3.0, 2.55), (3.6, 2.7), (3.55, 2.05)], MINT, parent=arrow)
+    g = stage("logs")
+    arrow = group("growth", -5.4, -1.5, g)
+    pts = [(0, 0), (1.5, 0.6), (2.5, 0.4), (4.2, 3.0)]
+    poly(pts, MINT, parent=arrow, width=0.2)
+    poly([(3.7, 3.2), (4.45, 3.38), (4.4, 2.55)], MINT, parent=arrow)
     t_g = at(ln, "growth")
     key(arrow, T0, scale=0.0)
     key(arrow, t_g - 0.001, scale=(0.0, 0.0, 1.0))
     key(arrow, t_g + 0.3, scale=(1.0, 1.0, 1.0))
-    fold = group("folder", 3.0, 0.1, g)
-    rect(1.6, 0.5, -1.4, 1.2, YELLOW, r=0.12, parent=fold)
-    card(4.6, 2.8, 0, 0, fold, color=YELLOW)
-    text("DO_NOT_OPEN_LOGS", 0.36, 0, -0.1, INK, MONO, align="CENTER", parent=fold)
-    lock = group("lock", 0, -0.85, fold)
-    circle(0.32, 0, 0.3, INK, parent=lock, z=0.01, ring=0.09)
-    rect(0.9, 0.62, 0, -0.05, INK, r=0.08, parent=lock, z=0.02)
+    fold = group("folder", 3.2, 0.0, g)
+    rect(2.0, 0.6, -1.9, 1.75, YELLOW, r=0.14, parent=fold)
+    card(6.4, 3.5, 0, 0, fold, color=YELLOW)
+    text("DO_NOT_OPEN_LOGS", 0.52, 0, 0.2, INK, MONO, align="CENTER", parent=fold)
+    lock = group("lock", 0, -0.95, fold)
+    circle(0.38, 0, 0.36, INK, parent=lock, z=0.01, ring=0.11)
+    rect(1.1, 0.75, 0, -0.05, INK, r=0.1, parent=lock, z=0.02)
     t_p = at(ln, "Please")
     key(fold, T0, scale=0.0)
     key(fold, t_p - 0.001, scale=0.0)
@@ -803,31 +825,31 @@ def hook(ln, t_out, n=5):
 
 def g_bill(ln, t_out):
     hook(ln, at(ln, "body") - 0.15)
-    g = group("invoice", 0, 2.0)
-    card(9.6, 3.0, 0, 0, g, color=PAPER)
-    text("INVOICE", 0.5, -4.3, 0.8, INK, BLACK, parent=g)
-    text("#0001", 0.3, 4.3, 0.85, "#59638f", MONO, align="RIGHT", parent=g)
-    text("1 × human body (accountable)", 0.34, -4.3, -0.1, INK, SEMI, parent=g)
-    text("BILLABLE", 0.62, 4.3, -1.05, MINT, BLACK, align="RIGHT", parent=g)
+    g = stage("invoice")
+    card(12.0, 3.8, 0, 0, g, color=PAPER)
+    text("INVOICE", 0.74, -5.4, 0.95, INK, BLACK, parent=g)
+    text("#0001", 0.48, 5.4, 1.02, "#59638f", MONO, align="RIGHT", parent=g)
+    text("1 × human body (accountable)", 0.54, -5.4, -0.2, INK, SEMI, parent=g)
+    text("BILLABLE", 0.84, 5.4, -1.35, MINT, BLACK, align="RIGHT", parent=g)
     show(g, at(ln, "body") - 0.05, t_out)
 
 
 def g_merge(ln, t_out):
     """Every merge approved by Kevin; then a pulse that holds still."""
-    g = group("merge", 0, 2.0)
+    g = stage("merge")
     t_m = at(ln, "merge")
     for k in range(4):
-        r = group("row", -2.6, 1.15 - 0.62 * k, g)
-        card(9.2, 0.5, 0, 0, r, color=INK)
-        text(f"✓ Merged #{4812 + k * 37}  —  approved by", 0.28, -4.3, -0.1, MINT, MONO, parent=r)
-        text("Kevin", 0.3, 4.3, -0.1, CORAL, BLACK, align="RIGHT", parent=r)
+        r = group("row", -2.75, 1.45 - 0.95 * k, g)
+        card(9.9, 0.8, 0, 0, r, color=INK)
+        text(f"✓ Merged #{4812 + k * 37}, approved by", 0.42, -4.65, 0, MINT, MONO, parent=r, valign="center")
+        text("Kevin", 0.5, 4.65, 0, CORAL, BLACK, align="RIGHT", parent=r, valign="center")
         pop_in(r, t_m - 0.2 + 0.14 * k, 0.18)
-    ecg = group("ecg", 4.6, -0.05, g)
-    card(4.2, 2.4, 0, 0, ecg, color=INK, edge="#3a4280")
-    line = group("line", -1.9, -0.2, ecg)
-    pts = [(0, 0), (0.6, 0), (0.8, 0.7), (1.0, -0.5), (1.2, 0), (3.8, 0)]
-    poly(pts, MINT, parent=line, width=0.07)
-    text("♥  54 bpm", 0.32, 0, 0.75, MINT, BLACK, align="CENTER", parent=ecg)
+    ecg = group("ecg", 5.0, 0.0, g)
+    card(5.0, 3.6, 0, 0, ecg, color=INK, edge="#3a4280")
+    line = group("line", -2.25, -0.45, ecg)
+    pts = [(0, 0), (0.7, 0), (0.95, 0.95), (1.2, -0.65), (1.45, 0), (4.5, 0)]
+    poly(pts, MINT, parent=line, width=0.09)
+    text("♥  54 bpm", 0.56, 0, 1.0, MINT, BLACK, align="CENTER", parent=ecg)
     t_p = at(ln, "pulse")
     key(line, T0, scale=(0.0, 1, 1))
     key(line, t_p, scale=(0.0, 1, 1))
@@ -839,22 +861,22 @@ def g_merge(ln, t_out):
 
 def g_table(ln, t_out):
     """BOT vs KEVIN: assets and knees."""
-    g = group("table", 0, 2.0)
+    g = stage("table")
     for k, (head, col) in enumerate((("BOT", LILAC), ("KEVIN", CORAL))):
-        h = group("head", 1.2 + 3.6 * k, 1.05, g)
-        card(3.2, 0.8, 0, 0, h, color=col)
-        text(head, 0.42, 0, -0.15, INK if k else INK, BLACK, align="CENTER", parent=h)
+        h = group("head", 1.4 + 4.0 * k, 1.35, g)
+        card(3.6, 1.05, 0, 0, h, color=col)
+        text(head, 0.6, 0, 0, INK, BLACK, align="CENTER", parent=h, valign="center")
         pop_in(h, ln["start"] + 0.12 * k)
     # both rows are up from the start of the line; the knees values land a beat before "knees",
     # so there's time to read the gag
     for r_, (label, vals, word) in enumerate((("ASSETS", ("0", "$9.40"), "assets"), ("KNEES", ("0", "2"), "it's"))):
-        y = 0.0 - 1.0 * r_
+        y = 0.05 - 1.35 * r_
         row = group("row", 0, y, g)
-        text(label, 0.42, -6.0, -0.15, WHITE, BLACK, parent=row)
-        rect(12.0, 0.04, 0, -0.5, "#3a4280", parent=row)
+        text(label, 0.62, -7.0, 0, WHITE, BLACK, parent=row, valign="center")
+        rect(14.0, 0.05, 0, -0.65, "#3a4280", parent=row)
         for k, v in enumerate(vals):
-            c = group("cell", 1.2 + 3.6 * k, 0, row)
-            text(v, 0.5, 0, -0.18, YELLOW if k else "#59638f", BLACK, align="CENTER", parent=c)
+            c = group("cell", 1.4 + 4.0 * k, 0, row)
+            text(v, 0.78, 0, 0, YELLOW if k else "#6f7bb0", BLACK, align="CENTER", parent=c, valign="center")
             pop_in(c, at(ln, word) + 0.15 + 0.25 * k)
         pop_in(row, ln["start"] + 0.25 + 0.2 * r_, 0.18)
     show(g, ln["start"] - 0.3, t_out)
@@ -862,45 +884,45 @@ def g_table(ln, t_out):
 
 def g_hire(ln, t_out):
     """A job ad for a little Kevin."""
-    g = group("hire", 0, 2.0)
-    card(9.0, 3.2, 0, 0, g, color=WHITE)
-    rect(9.0, 0.8, 0, 1.2, CORAL, parent=g, z=0.01)
-    text("NOW HIRING:  a little Kevin", 0.42, -4.1, 1.05, WHITE, BLACK, parent=g, z=0.02)
+    g = stage("hire")
+    card(11.6, 4.1, 0, 0, g, color=WHITE)
+    rect(11.6, 1.05, 0, 1.52, CORAL, parent=g, z=0.01)
+    text("NOW HIRING:  a little Kevin", 0.64, -5.3, 1.52, WHITE, BLACK, parent=g, z=0.02, valign="center")
     reqs = (("Has a pulse", "hire"), ("Can sign things", "little"), ("Easy to forsake", "forsake"))
     for k, (req, word) in enumerate(reqs):
-        r = group("req", -3.9, 0.2 - 0.62 * k, g)
-        text(req, 0.36, 0.0, -0.13, INK, SEMI, parent=r)
-        text("✓✓✓" if word == "forsake" else "✓", 0.44, 7.6, -0.15, MINT, BLACK, align="RIGHT",
-             parent=r)
+        r = group("req", -5.1, 0.3 - 0.85 * k, g)
+        text(req, 0.54, 0.0, 0, INK, SEMI, parent=r, valign="center")
+        text("✓✓✓" if word == "forsake" else "✓", 0.64, 10.2, 0, MINT, BLACK, align="RIGHT",
+             parent=r, valign="center")
         pop_in(r, at(ln, word), 0.2)
     show(g, ln["start"] - 0.3, t_out)
 
 
 def g_loop(ln, t_out):
     """The loop (with Kevin riding round it), then his name on every line."""
-    g = group("loop", 0, 2.0)
-    lp = group("ring", -3.6, 0, g)
-    circle(1.4, 0, 0, LILAC, parent=lp, ring=0.12)
+    g = stage("loop")
+    lp = group("ring", -4.0, 0, g)
+    circle(1.6, 0, 0, LILAC, parent=lp, ring=0.14)
     for k, a in enumerate((0.0, 2.1, 4.2)):
-        b = group("agent", 1.4 * math.cos(a), 1.4 * math.sin(a), lp)
-        card(1.2, 0.5, 0, 0, b, color=INK, edge=LILAC)
-        text("agent", 0.22, 0, -0.08, LILAC, MONO, align="CENTER", parent=b)
+        b = group("agent", 1.6 * math.cos(a), 1.6 * math.sin(a), lp)
+        card(1.9, 0.72, 0, 0, b, color=INK, edge=LILAC)
+        text("agent", 0.42, 0, 0, LILAC, MONO, align="CENTER", parent=b, valign="center")
     rider = group("rider", 0, 0, lp)
-    circle(0.28, 1.4, 0, CORAL, parent=rider, z=0.03)
-    text("K", 0.3, 1.4, -0.11, WHITE, BLACK, align="CENTER", parent=rider, z=0.04)
+    circle(0.38, 1.6, 0, CORAL, parent=rider, z=0.03)
+    text("K", 0.46, 1.6, 0, WHITE, BLACK, align="CENTER", parent=rider, z=0.04, valign="center")
     t_l = at(ln, "loop")
     key(rider, t_l, rot=0.0)
     key(rider, t_out + 0.3, rot=math.tau * 2.5)
     pop_in(lp, t_l - 0.2)
-    sig = group("sigs", 3.6, 0, g)
-    card(5.0, 3.2, 0, 0, sig, color=PAPER)
+    sig = group("sigs", 3.9, 0, g)
+    card(6.4, 4.0, 0, 0, sig, color=PAPER)
     t_n = at(ln, "name")
     for k in range(5):
-        y = 1.1 - 0.52 * k
-        rect(3.6, 0.03, 0.25, y - 0.12, "#59638f", parent=sig, z=0.01)
-        s = group("sig", -2.0, y, sig)
-        text("x", 0.26, 0, -0.1, "#59638f", SEMI, parent=s, z=0.02)
-        text("Kevin", 0.36, 0.45, -0.08, "#2a4fb8", ITALIC, parent=s, z=0.02)
+        y = 1.45 - 0.7 * k
+        rect(4.6, 0.04, 0.35, y - 0.17, "#59638f", parent=sig, z=0.01)
+        s = group("sig", -2.6, y, sig)
+        text("x", 0.42, 0, -0.14, "#59638f", SEMI, parent=s, z=0.02)
+        text("Kevin", 0.54, 0.55, -0.12, "#2a4fb8", ITALIC, parent=s, z=0.02)
         pop_in(s, t_n + 0.16 * k, 0.15)
     key(sig, T0, scale=0.0)
     pop_in(sig, t_n - 0.25)
@@ -909,24 +931,24 @@ def g_loop(ln, t_out):
 
 def g_sign(ln, t_out):
     hook(ln, at(ln, "and") - 0.15)
-    g = group("contract", 0, 2.0)
-    card(7.0, 3.3, 0, 0, g, color=PAPER)
-    text("ACCOUNTABILITY AGREEMENT", 0.32, -3.1, 1.15, INK, BLACK, parent=g)
+    g = stage("contract")
+    card(9.0, 4.0, 1.0, 0, g, color=PAPER)
+    text("ACCOUNTABILITY AGREEMENT", 0.5, -3.1, 1.45, INK, BLACK, parent=g)
     for k in range(4):
-        rect(5.6 - 0.8 * (k % 2), 0.08, -3.1, 0.55 - 0.32 * k, "#c9c3b3", anchor="left", parent=g, z=0.01)
-    rect(3.2, 0.04, -0.9, -1.0, INK, parent=g, z=0.01)
-    arrow = group("arrow", -4.8, -0.95, g)
-    poly([(-1.2, 0.18), (0.0, 0.18), (0.0, 0.42), (0.6, 0.0), (0.0, -0.42), (0.0, -0.18), (-1.2, -0.18)], CORAL,
+        rect(7.0 - 1.0 * (k % 2), 0.1, -3.1, 0.75 - 0.4 * k, "#c9c3b3", anchor="left", parent=g, z=0.01)
+    rect(4.0, 0.05, 1.3, -1.25, INK, parent=g, z=0.01)
+    arrow = group("arrow", -4.6, -1.2, g)
+    poly([(-1.5, 0.22), (0.0, 0.22), (0.0, 0.52), (0.75, 0.0), (0.0, -0.52), (0.0, -0.22), (-1.5, -0.22)], CORAL,
          parent=arrow)
-    text("SIGN HERE", 0.26, -1.15, 0.5, CORAL, BLACK, parent=arrow)
+    text("SIGN HERE", 0.46, -2.05, 0.65, CORAL, BLACK, parent=arrow)
     t_a, t_s = at(ln, "paperwork"), at(ln, "sign")
     for k in range(6):   # bounce on the beats
         tb = t_a + 0.27 * k
-        key(arrow, tb, loc=(-4.8, -0.95))
-        key(arrow, tb + 0.13, loc=(-4.5, -0.95))
-    stamp = group("stamp", -0.9, -0.6, g)
-    rect(3.0, 1.2, 0, 0, CORAL, r=0.12, parent=stamp, z=0.03)
-    text("SIGN", 0.8, 0, -0.28, WHITE, BLACK, align="CENTER", parent=stamp, z=0.04)
+        key(arrow, tb, loc=(-4.6, -1.2))
+        key(arrow, tb + 0.13, loc=(-4.25, -1.2))
+    stamp = group("stamp", 1.3, -0.75, g)
+    rect(3.6, 1.45, 0, 0, CORAL, r=0.14, parent=stamp, z=0.03)
+    text("SIGN", 0.95, 0, 0, WHITE, BLACK, align="CENTER", parent=stamp, z=0.04, valign="center")
     key(stamp, T0, scale=0.0)
     key(stamp, t_s - 0.001, scale=0.0)
     key(stamp, t_s + 0.1, scale=2.0, rot=0.2)
