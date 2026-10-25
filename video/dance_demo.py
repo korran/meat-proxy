@@ -868,6 +868,10 @@ def main():
         OS.preview_lights(A.preview)
     if yacht:
         YS.shadow_budget(sc)
+    if office:          # (the same, for the office: its 1440p render overflowed in the opening fly-through)
+        for ob in bpy.data.objects:
+            if ob.type == "LIGHT" and ob.data.use_shadow:
+                ob.data.shadow_maximum_resolution = YS_SUN_RES if ob.data.type == "SUN" else YS_AREA_RES
     if (office or yacht) and A.layer:
         split_tv_pass(sc, A.layer, "slide" if office else "led")
     if A.flat:
@@ -877,6 +881,9 @@ def main():
         sc.frame_end = n // 2
     patch = tuple(float(v) for v in A.patch.split(",")) if A.patch else None
     LS.render(sc, A.out, frames, fps, start, A.stills, A.preview, A.lossless or (void and A.bare), patch)
+
+
+YS_SUN_RES, YS_AREA_RES = 0.004, 0.002     # (finest shadow texels: see yacht_set.shadow_budget)
 
 
 # the outro's phone video: camera (location, target, relative to her spot) and lens
