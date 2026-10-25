@@ -809,11 +809,8 @@ def chrome(lines, beats):
     for k, ln in enumerate(lines):
         t_a = ln["start"] - 0.35
         t_b = lines[k + 1]["start"] - 0.35 if k + 1 < len(lines) else SG.END + 1
-        c = text(f"SLIDE {k + 31:02d} / 3", 0.3, 8.6, -4.36, "#7f8fc8", SEMI, align="RIGHT")
-        hide_until(c, t_a)
-        pop_in(c, t_a, 0.15)
-        key(c, t_b - EPS, scale=1.0)
-        key(c, t_b, scale=0.0)
+        c = text(f"SLIDE {k + 1:02d} / {len(lines):02d}", 0.3, 8.6, -4.36, "#7f8fc8", SEMI, align="RIGHT")
+        SG.shown_between(c, t_a, t_b)       # (it just ticks over to the next number)
     bar = rect(1.2, 0.07, -8.6, -4.0, CORAL, anchor="left")
     for b in beats:
         if b["beat"] in (1, 3):

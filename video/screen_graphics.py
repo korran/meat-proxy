@@ -214,6 +214,19 @@ def pop_in(ob, t, dur=0.22, over=1.12, frm=0.0):
     key(ob, t + dur, scale=1.0)
 
 
+def shown_between(ob, t_a, t_b):
+    """Full size from t_a to t_b, nothing outside: it simply appears and disappears (keys a whole
+    frame apart, so neither overwrites the other)."""
+    f = 1.0 / FPS
+    ob["snap"] = True                    # (constant keys: no in-between, even under motion blur)
+    key(ob, T0, scale=0.0)
+    if t_a - f > T0:
+        key(ob, t_a - f, scale=0.0)
+    key(ob, t_a, scale=1.0)
+    key(ob, t_b - f, scale=1.0)
+    key(ob, t_b, scale=0.0)
+
+
 def pop_out(ob, t, dur=0.18):
     key(ob, t, scale=1.0)
     key(ob, t + dur, scale=0.0)
@@ -242,6 +255,9 @@ def ease_all():
         if ad and ad.action:
             for fc in ad.action.fcurves:
                 for kp in fc.keyframe_points:
+                    if ob.get("snap"):
+                        kp.interpolation = "CONSTANT"
+                        continue
                     kp.interpolation = "BEZIER"
                     kp.handle_left_type = kp.handle_right_type = "AUTO_CLAMPED"
     for m in bpy.data.materials:
@@ -546,10 +562,7 @@ def chrome(lines, beats):
         t_a = ln["start"] - 0.35
         t_b = lines[k + 1]["start"] - 0.35 if k + 1 < len(lines) else END + 1
         c = text(f"SLIDE {k + 2:02d} / 212", 0.32, 7.2, -4.22, "#7f8fc8", SEMI, align="RIGHT")
-        hide_until(c, t_a)
-        pop_in(c, t_a, 0.15)
-        key(c, t_b - 0.001, scale=1.0)
-        key(c, t_b, scale=0.0)
+        shown_between(c, t_a, t_b)          # (it just ticks over to the next number)
     bar = rect(1.2, 0.07, -7.2, -4.12, CORAL, anchor="left")
     for b in beats:
         if b["beat"] in (1, 3):
