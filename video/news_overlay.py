@@ -386,31 +386,38 @@ def g_comply(g, ln, t_in, t_out):
             else:
                 dig(sh, t_in, t_out, p)
             if (r, k) == rebel:
-                # out of line: up and off to the side, tilted; flagged in red; walks back
+                # out of line: up and off to the side, tilted; flagged in red; walks back. The
+                # target ring and the flag ride along with them (not tilting)
+                follow = group("target", x + 0.35, y + 0.42, c)
                 key(p, SG.T0, loc=(x + 0.35, y + 0.42), rot=0.35)
                 key(p, t_ret, loc=(x + 0.35, y + 0.42), rot=0.35)
+                key(follow, SG.T0, loc=(x + 0.35, y + 0.42))
+                key(follow, t_ret, loc=(x + 0.35, y + 0.42))
                 for j in range(5):            # shuffling back, a little bob on each step
                     u = (j + 1) / 5
                     tt = t_ret + (t_st + 0.3 - t_ret) * u
-                    key(p, tt, loc=(x + 0.35 * (1 - u), y - 0.1 + 0.52 * (1 - u) + (0.06 if j % 2 else 0)),
-                        rot=0.35 * (1 - u))
+                    loc = (x + 0.35 * (1 - u), y - 0.1 + 0.52 * (1 - u) + (0.06 if j % 2 else 0))
+                    key(p, tt, loc=loc, rot=0.35 * (1 - u))
+                    key(follow, tt, loc=loc)
                 for ob in parts:
                     SG.key_color(ob, SG.T0, RED)
                     SG.key_color(ob, t_st + 0.3, BLUE)
-                ring = circle(0.5, x + 0.35, y + 0.55, RED, parent=c, z=0.045, ring=0.06)
-                tag = group("flag", x + 0.35, y + 1.22, c)
+                ring = circle(0.5, 0, 0.13, RED, parent=follow, z=0.045, ring=0.06)
+                tag = group("flag", 0, 0.8, follow)
                 tag.location.z = 0.06
                 rect(3.4, 0.56, 0, 0, RED, r=0.08, parent=tag)
                 text("NONCOMPLIANCE", 0.36, 0, 0, WHITE, BLACK, align="CENTER", parent=tag, z=0.001, valign="center")
+                t_back = t_st + 0.3                    # (when they turn blue again)
                 for ob in (ring, tag):
+                    ob["snap"] = True                  # (hard on/off blinks: no smear under motion blur)
                     t = t_in
-                    while t < t_st + 0.3:     # blinking until they're back
-                        key(ob, t, scale=1.0)
-                        key(ob, t + 0.3, scale=1.0)
-                        key(ob, t + 0.3 + EPS, scale=0.0)
-                        key(ob, t + 0.45 - EPS, scale=0.0)
+                    while t < t_back - EPS:   # blinking until they're back, gone the moment they are
+                        for tk, sc_ in ((t, 1.0), (t + 0.3, 1.0), (t + 0.3 + EPS, 0.0), (t + 0.45 - EPS, 0.0)):
+                            if tk < t_back - EPS:
+                                key(ob, tk, scale=sc_)
                         t += 0.45
-                    key(ob, t, scale=0.0)
+                    key(ob, t_back - EPS, scale=ob.scale[0])
+                    key(ob, t_back, scale=0.0)
             else:
                 # everyone else is nearly in line, a little off, until the scan snaps them
                 dx, dr = rng.uniform(-0.06, 0.06), rng.uniform(-0.12, 0.12)
