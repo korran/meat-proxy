@@ -50,6 +50,8 @@ WALLS = ["#e6d3a3", "#a9c4dd", "#f2f2ee", "#a8bf9a", "#f0dc8c", "#d9a98c"]
 ROOFS = ["#8a2f2a", "#4a4d55", "#6b4a2e", "#2f4b7c"]
 TRIM, DOOR, GLASS_C = "#f4f4f0", "#6b3a22", "#9fd0f0"
 DC_WALL, DC_RIB, DC_DARK, CRANE = "#c9cdd2", "#8a8f99", "#2b2f37", "#f2c230"
+CONCRETE, RACK = "#a3a5a6", "#4a5160"     # (the racks a mid charcoal: they read as cabinets from the air)
+DC_FLOOR2, RACK_H = 33, 18          # the datacenter's upper floor (plate), a rack's height (plates)
 
 
 def block_origin(bx, by):
@@ -112,11 +114,12 @@ def car(K, x, y, color, along_y=True):
 
 
 # ---------------------------------------------------------------- houses
-def build_house(B, bx, by, lot, row, rng, interior=False, name=None):
+def build_house(B, bx, by, lot, row, rng, interior=False, name=None, frames=None):
     """One house on its lot: brick walls with windows and a door on the front, a stepped gable
     roof, a chimney; the front yard, driveway, a tree and maybe a car. Built round its own
     centre so it can be animated. interior: the front picture window is open (no glass) for
-    the drone to fly through, and the house is hollow (see build_interior)."""
+    the drone to fly through, and the house is hollow (see build_interior). frames: (first, last)
+    frame of its demolition, brick by brick from the top down (or None: it stays)."""
     K = Kit(B)
     lx, ly, face = lot_origin(bx, by, lot, row)
     hx = lx + (LOT_W - HOUSE_W) // 2 - 2
@@ -146,63 +149,158 @@ def build_house(B, bx, by, lot, row, rng, interior=False, name=None):
         K.box(wx * P + 0.02, (hy + 4) * P, 7 * PL, (wx + 1) * P - 0.02, (hy + 10) * P, 16 * PL, GLASS_C, kind="glossy")
     K.box((hx + 6) * P, (by_ + 0.45) * P, 7 * PL, (hx + 12) * P, (by_ + 0.55) * P, 16 * PL, GLASS_C, kind="glossy")
     # ceiling plate and a stepped gable roof (ridge along y, so the gables face the sides)
-    K.piece(hx - 1, hy - 1, 1 + WALL_H, HOUSE_W + 2, HOUSE_D + 2, 1, TRIM, studs=False)
+    K.block(hx - 1, hy - 1, 1 + WALL_H, HOUSE_W + 2, HOUSE_D + 2, 1, TRIM)
     z = 2 + WALL_H
     for k in range(HOUSE_W // 2):
         w = HOUSE_W + 2 - 2 * k
         if w <= 0:
             break
-        K.piece(hx - 1 + k, hy - 1, z + k, w, HOUSE_D + 2, 1, roof, studs=w <= 2)
-    K.brick(hx + HOUSE_W - 5, hy + HOUSE_D // 2, z, 2, 2, "#8a5a3b", h=10, studs=False)       # chimney
+        K.block(hx - 1 + k, hy - 1, z + k, w, HOUSE_D + 2, 1, roof, studs=w <= 2)
+    for zc, hc in ((z, 3), (z + 3, 3), (z + 6, 3), (z + 9, 1)):                            # chimney, stacked
+        K.brick(hx + HOUSE_W - 5, hy + HOUSE_D // 2, zc, 2, 2, "#8a5a3b", h=hc, studs=False)
     # front path, driveway, a tree, maybe a car
     path_y0, path_y1 = (ly, hy) if face < 0 else (hy + HOUSE_D, ly + LOT_D)
-    K.piece(hx + 4, path_y0, 1, 3, path_y1 - path_y0, 0.4, WALK, studs=False)
+    K.block(hx + 4, path_y0, 1, 3, path_y1 - path_y0, 0.4, WALK)
     dx = hx + HOUSE_W + 1
-    K.piece(dx, ly if face < 0 else hy, 1, 5, (hy + HOUSE_D - ly) if face < 0 else (ly + LOT_D - hy), 0.4,
-            "#8a8d93", studs=False)
+    K.block(dx, ly if face < 0 else hy, 1, 5, (hy + HOUSE_D - ly) if face < 0 else (ly + LOT_D - hy), 0.4,
+            "#8a8d93")                                                                   # driveway
     if rng.random() < 0.7:
         car(K, dx + 1.5, (ly + 3) if face < 0 else (ly + LOT_D - 7), rng.choice(("#c8323c", "#2f6fd6", "#f4f4f0",
                                                                                   "#1b1d22", "#3a8a4a")))
     tree(K, lx + 4, (ly + 4) if face < 0 else (ly + LOT_D - 4), rng.uniform(0.9, 1.25))
     # build round the house's centre
-    ob = K.build(name or f"house_{bx}_{by}_{lot}_{row}")
-    c = Vector(((hx + HOUSE_W / 2) * P, (hy + HOUSE_D / 2) * P, 0))
-    ob.data.transform(__import__("mathutils").Matrix.Translation(-c))
-    ob.location = c
+    centre = ((hx + HOUSE_W / 2) * P, (hy + HOUSE_D / 2) * P)
+    when = (lambda pcs: [(-1e9, f) for f in sweep(pcs, *frames, centre, top_down=True)]) if frames else None
+    ob = K.build(name or f"house_{bx}_{by}_{lot}_{row}", when=when)
+    recentre(ob, Vector((*centre, 0)))
     return ob, (hx, hy, face, wall)
 
 
+# ---------------------------------------------------------------- brick by brick
+def recentre(ob, c):
+    """Move an object's mesh so its origin is at c (world), keeping it in place (and the piece
+    centres that the piecewise modifier collapses hidden pieces to)."""
+    from mathutils import Matrix
+    ob.data.transform(Matrix.Translation(-c))
+    pc = ob.data.attributes.get("pc")
+    if pc:
+        vals = [0.0] * (3 * len(pc.data))
+        pc.data.foreach_get("vector", vals)
+        for i in range(0, len(vals), 3):
+            vals[i] -= c.x; vals[i + 1] -= c.y; vals[i + 2] -= c.z
+        pc.data.foreach_set("vector", vals)
+    ob.location = c
+
+
+def sweep(pieces, f0, f1, centre, top_down):
+    """When each piece goes (or comes): layer by layer (in plates), top down or bottom up, at a
+    steady rate (a worker taking it apart or putting it together by
+    hand); within a layer, round the walls (by angle about the centre, starting at the front),
+    then anything inside the walls row by row. Returns a frame per piece, from f0 to f1."""
+    cx, cy = centre
+    xs = [p["c"][0] for p in pieces]
+    ys = [p["c"][1] for p in pieces]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    edge = 2.5 * P
+
+    def key(i):
+        p = pieces[i]
+        # taking apart: a piece goes when the work gets down to its top (a door, a window, a tall
+        # trunk don't hang about); putting together: when the work gets up to its bottom
+        layer = round((p["hi"][2] if top_down else p["lo"][2]) / PL)
+        x, y = p["c"][0], p["c"][1]
+        on_edge = min(x - x0, x1 - x, y - y0, y1 - y) < edge
+        if on_edge:
+            ang = (math.atan2(x - cx, -(y - cy)) + math.tau) % math.tau     # 0 at the front (-y), clockwise
+            within = (0, ang, 0.0)
+        else:
+            within = (1, round((y - y0) / P), x)                             # row by row
+        return ((-layer if top_down else layer),) + within
+    order = sorted(range(len(pieces)), key=key)
+    n = max(1, len(order) - 1)
+    out = [0.0] * len(pieces)
+    for k, i in enumerate(order):
+        out[i] = f0 + (f1 - f0) * k / n
+    return out
+
+
+HOUSE_DUR, DC_DUR = 0.07, 0.2      # (time-lapse progress) a house's demolition; a datacenter's construction
+
+
+def u_frame(u):
+    """Time-lapse progress -> frame of the shot (frame 1 at its start; before it: < 1)."""
+    t0, t1 = TL
+    return 1 + 60 * (t0 + (u - TL_FROM) / (1 - TL_FROM) * (t1 - t0))
+
+
+def house_turn(bx, by, lot, row):
+    return 0.04 + 0.5 * (bx + by * 0.25 + lot * 0.06 + row * 0.03) / ZONE_COLS
+
+
+def dc_turn(bx, by):
+    """A block's datacenter starts as soon as its last house is gone (the empty lot only shows
+    briefly), and every one is done while the drone is still over the zone."""
+    last = max(house_turn(bx, by, lot, row) for lot in range(LOTS) for row in range(2))
+    return last + HOUSE_DUR + 0.01
+
+
 # ---------------------------------------------------------------- the construction
-def build_datacenter(B, bx, by):
-    """A datacenter filling a block: ribbed grey walls, a dark louvred band, loading docks,
-    rows of cooling units with fans on the roof, red aircraft lights. Built round its base
-    centre (so it can grow up out of the ground)."""
+def build_datacenter(B, bx, by, frames=None):
+    """A datacenter filling a block, built of bricks: grey walls in running bond with darker
+    pilasters every six studs, a dark louvred band, loading docks, a roof of plates with rows of
+    cooling units (fans on top), red aircraft lights at the corners. frames: (first, last) frame
+    of its construction, brick by brick from the ground up (or None: it's simply there)."""
     K = Kit(B)
     ox, oy = block_origin(bx, by)
     x0, y0, x1, y1 = ox + 4, oy + 4, ox + BLK_W - 4, oy + BLK_D - 4
     H = 66                                                        # plates (22 bricks): ~3.6 units
-    K.box(x0 * P, y0 * P, 0, x1 * P, y1 * P, H * PL, DC_WALL)
-    for x in range(int(x0) + 4, int(x1), 6):                      # ribs
-        for yy, s in ((y0, -1), (y1, 1)):
-            K.box((x - 0.4) * P, yy * P + s * 0.0, 0, (x + 0.4) * P, yy * P + s * 0.04, H * PL, DC_RIB)
-    for yy in range(int(y0) + 4, int(y1), 6):
-        for xx, s in ((x0, -1), (x1, 1)):
-            K.box(xx * P, (yy - 0.4) * P, 0, xx * P + s * 0.04, (yy + 0.4) * P, H * PL, DC_RIB)
-    for yy, s in ((y0, -1), (y1, 1)):                             # louvred band
-        K.box(x0 * P, yy * P + s * 0.045, 40 * PL, x1 * P, yy * P + s * 0.05, 52 * PL, DC_DARK)
-    for x in range(int(x0) + 8, int(x1) - 8, 14):                 # loading docks
-        K.box(x * P, y0 * P - 0.05, 0, (x + 6) * P, y0 * P, 16 * PL, "#5a606b")
-    for x in range(int(x0) + 4, int(x1) - 6, 9):                  # cooling units
+    docks = [(x, x + 6) for x in range(int(x0) + 8, int(x1) - 8, 14)]
+    open_ = [(a, b, 0, 18) for a, b in docks]                     # dock openings on the front, low down
+    for z0, z1, col in ((0, 39, DC_WALL), (39, 51, DC_DARK), (51, H, DC_WALL)):   # the walls; a louvred band
+        wall_run(K, "x", y0, x0, x1, z0, z1, col, openings=open_)
+        wall_run(K, "x", y1 - 1, x0, x1, z0, z1, col)
+        wall_run(K, "y", x0, y0 + 1, y1 - 1, z0, z1, col)
+        wall_run(K, "y", x1 - 1, y0 + 1, y1 - 1, z0, z1, col)
+    for z in range(0, H, 3):
+        for x in range(int(x0) + 4, int(x1) - 1, 6):              # pilasters
+            if not any(a <= x < b for a, b in docks) or z >= 18:
+                K.brick(x, y0 - 1, z, 1, 1, DC_RIB, studs=False)
+            K.brick(x, y1, z, 1, 1, DC_RIB, studs=False)
+        for y in range(int(y0) + 4, int(y1) - 1, 6):
+            K.brick(x0 - 1, y, z, 1, 1, DC_RIB, studs=False)
+            K.brick(x1, y, z, 1, 1, DC_RIB, studs=False)
+    for a, b in docks:                                            # roller doors in the dock openings
+        K.block(a, y0 + 0.5, 0, b - a, 0.5, 18, "#5a606b")
+    # inside, two storeys: concrete floors, each with rows of server racks (status lights on their
+    # fronts) and aisles between them
+    for zf in (0, DC_FLOOR2):
+        K.block(x0 + 1, y0 + 1, zf, x1 - x0 - 2, y1 - y0 - 2, 1, CONCRETE)        # the floor slab
+        k = 0
+        for y in range(int(y0) + 4, int(y1) - 5, 6):              # rows of racks, two studs deep
+            for x in range(int(x0) + 4, int(x1) - 5, 2):
+                if (x - int(x0) - 4) % 14 == 12:                 # a cross aisle every so often
+                    continue
+                # stacked from bricks (so it goes up course by course with everything else), each
+                # with a strip of status lights on its front
+                for m, z in enumerate(range(zf + 1, zf + 1 + RACK_H, 3)):
+                    K.brick(x, y, z, 2, 2, RACK, studs=False)
+                    col = ("#3dff9a", "#59b8ff", "#3dff9a", "#ffb347")[(k + m) % 4]
+                    K.box((x + 0.3) * P, y * P - 0.006, (z + 1.2) * PL, (x + 1.7) * P, y * P - 0.001, (z + 1.8) * PL,
+                          col, kind="glow")
+                k += 1
+    K.block(x0 + 1, y0 + 1, H - 1, x1 - x0 - 2, y1 - y0 - 2, 1, DC_WALL)       # the roof: plates
+    for x in range(int(x0) + 4, int(x1) - 6, 9):                  # cooling units, fans on top
         for y in range(int(y0) + 4, int(y1) - 6, 9):
-            K.box(x * P, y * P, H * PL, (x + 6) * P, (y + 6) * P, (H + 6) * PL, "#aab0b8")
-            for fx, fy in ((1.5, 1.5), (4.5, 1.5), (1.5, 4.5), (4.5, 4.5)):
-                K.cyl((x + fx) * P, (y + fy) * P, (H + 6) * PL, (H + 6.3) * PL, 1.2 * P, DC_DARK, sides=12)
-    for xx, yy in ((x0, y0), (x1, y0), (x0, y1), (x1, y1)):
-        K.cyl(xx * P, yy * P, H * PL, (H + 4) * PL, 0.03, "#ff2a2a", kind="glow", sides=8)
-    ob = K.build(f"dc_{bx}_{by}")
-    c = Vector(((x0 + x1) / 2 * P, (y0 + y1) / 2 * P, 0))
-    ob.data.transform(__import__("mathutils").Matrix.Translation(-c))
-    ob.location = c
+            K.block(x, y, H, 6, 6, 6, "#aab0b8")                   # (built of bricks)
+            for fx, fy in ((0, 0), (3, 0), (0, 3), (3, 3)):
+                K.round(x + fx + 0.5, y + fy + 0.5, H + 6, 2, 1, DC_DARK, studs=False)
+    for xx, yy in ((x0, y0), (x1 - 1, y0), (x0, y1 - 1), (x1 - 1, y1 - 1)):
+        for z in range(H, H + 4):                                 # (stacked round plates)
+            K.round(xx, yy, z, 1, 1, "#ff2a2a", studs=False, kind="glow")
+    centre = ((x0 + x1) / 2 * P, (y0 + y1) / 2 * P)
+    when = (lambda pcs: [(f, 1e9) for f in sweep(pcs, *frames, centre, top_down=False)]) if frames else None
+    ob = K.build(f"dc_{bx}_{by}", when=when)
+    recentre(ob, Vector((*centre, 0)))
     return ob
 
 
@@ -488,19 +586,17 @@ def build(sc, seed=8, screen_video=None, screen_offset=0):
             for lot in range(LOTS):
                 for row in range(2):
                     is_target = (bx, by, lot, row) == TARGET
-                    ob, (hx, hy, face, wall) = build_house(B, bx, by, lot, row, rng, interior=is_target)
+                    w0 = house_turn(bx, by, lot, row)     # (in the zone: taken apart brick by brick)
+                    frames = (u_frame(w0), u_frame(w0 + HOUSE_DUR)) if bx < ZONE_COLS else None
+                    ob, (hx, hy, face, wall) = build_house(B, bx, by, lot, row, rng, interior=is_target,
+                                                           frames=frames)
                     if is_target:
                         interior = build_interior(B, col, hx, hy, screen_video, screen_offset)
                     if bx < ZONE_COLS:
-                        rb = build_rubble(B, f"rubble_{bx}_{by}_{lot}_{row}", [wall, "#8a8f99", "#6b4a2e"],
-                                          bx * 100 + by * 10 + lot * 2 + row)
-                        rb.location = ob.location
-                        rb.scale = (0, 0, 0)
                         houses.append((ob, bx, by, lot))
-                        rubble.append(rb)
             if bx < ZONE_COLS:
-                dc = build_datacenter(B, bx, by)
-                dc.scale.z = 0.0
+                w0 = dc_turn(bx, by)                      # (built brick by brick)
+                dc = build_datacenter(B, bx, by, frames=(u_frame(w0), u_frame(w0 + DC_DUR)))
                 dcs.append((dc, bx, by))
                 ox, oy = block_origin(bx, by)
                 mast, jib = build_crane(B, ox + BLK_W * (0.3 + 0.4 * (by % 2)), oy + BLK_D + ROAD / 2 - 2,
@@ -566,20 +662,8 @@ def lapse_state(S, sc, u):
     crane comes down. The fence goes up first."""
     S["fence"].scale.z = min(1.0, u / 0.05)
     nb = ZONE_COLS
-    for ob, bx, by, lot in S["houses"]:
-        w0 = 0.04 + 0.5 * (bx + by * 0.25 + lot * 0.06) / nb      # this house's turn
-        k = (u - w0) / 0.06
-        ob.scale = (1, 1, min(1.0, max(0.0, 1 - k))) if k < 1 else (0, 0, 0)
-    for rb, (ob, bx, by, lot) in zip(S["rubble"], S["houses"]):
-        w0 = 0.04 + 0.5 * (bx + by * 0.25 + lot * 0.06) / nb
-        a, b = (u - w0) / 0.05, (u - w0 - 0.12) / 0.06
-        s = min(1.0, max(0.0, a)) * (1 - min(1.0, max(0.0, b)))
-        rb.scale = (s, s, s)
-    for dc, bx, by in S["dcs"]:
-        w0 = 0.04 + 0.5 * (bx + by * 0.25 + 0.3) / nb + 0.18
-        g = min(1.0, max(0.0, (u - w0) / 0.22))
-        floors = 11
-        dc.scale.z = math.floor(g * floors + 1e-6) / floors + 0.0001     # floor by floor
+    # (the houses and datacenters go and come brick by brick on their own: the piecewise modifier,
+    # by frame; see house_turn, dc_turn)
     for mast, jib, bx, by in S["cranes"]:
         w0 = 0.04 + 0.5 * (bx + by * 0.25 + 0.3) / nb + 0.14
         up = min(1.0, max(0.0, (u - w0) / 0.04)) * (1 - min(1.0, max(0.0, (u - w0 - 0.32) / 0.04)))
@@ -598,8 +682,7 @@ def animate_lapse(S, sc, start, n, fps):
     t0, t1 = TL
     sky = sc.world.node_tree.nodes["sky"]
     sun = bpy.data.objects["sun"]
-    obs = [o for o, *_ in S["houses"]] + S["rubble"] + [d for d, *_ in S["dcs"]] + \
-        [m for m, *_ in S["cranes"]] + [j for _, j, *_ in S["cranes"]] + [S["fence"]]
+    obs = [m for m, *_ in S["cranes"]] + [j for _, j, *_ in S["cranes"]] + [S["fence"]]
     for f in range(1, n + 1):
         t = start + (f - 1) / fps - SHOT_START
         lapse_state(S, sc, lapse_u(t))
