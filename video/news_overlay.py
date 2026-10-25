@@ -77,21 +77,26 @@ def flip(ob, t_in, t_out=None, dur=0.18):
 
 
 def counter(parent, values, times, t_end, size, x, y, color, font=BLACK, align="CENTER", colors=None):
-    """A number ticking through `values` at `times`, gone at t_end."""
+    """A number ticking through `values` at `times`, gone at t_end. Each value snaps on and off
+    exactly on a frame (constant keys), so motion blur never mixes two of them."""
     obs = []
     for k, v in enumerate(values):
         c = colors[k] if colors else color
         ob = text(v, size, x, y - size * 0.36, c, font, align=align, parent=parent, z=0.04)
-        visible(ob, times[k], times[k + 1] if k + 1 < len(values) else t_end)
+        SG.shown_between(ob, times[k], times[k + 1] if k + 1 < len(values) else t_end)
         obs.append(ob)
     return obs
 
 
+ROLL_STEP = 6          # frames each value holds (10 a second: readable, not a blur)
+
+
 def rolling(parent, fmt, v0, v1, t0, t1, t_end, size, x, y, color, final=None, final_color=None,
             font=BLACK, align="CENTER"):
-    """A number counting smoothly from v0 to v1 between t0 and t1, a new value every frame
+    """A number counting from v0 to v1 between t0 and t1, a new value every ROLL_STEP frames
     (easing out as it arrives), shown as fmt(v); then `final` (or the last value) until t_end."""
-    n = max(1, int(round((t1 - t0) * SG.FPS)))
+    f0 = int(round(t0 * SG.FPS))
+    n = max(1, int(round((t1 - t0) * SG.FPS / ROLL_STEP)))
     vals, times = [], []
     for i in range(n + 1):
         u = i / n
@@ -99,7 +104,7 @@ def rolling(parent, fmt, v0, v1, t0, t1, t_end, size, x, y, color, final=None, f
         body = fmt(v0 + (v1 - v0) * u)
         if not vals or body != vals[-1]:
             vals.append(body)
-            times.append(t0 + (t1 - t0) * i / n)
+            times.append((f0 + i * ROLL_STEP) / SG.FPS)          # (on whole frames)
     if final:
         vals[-1] = final
     cols = [color] * (len(vals) - 1) + [final_color or color]
@@ -122,7 +127,7 @@ def stamp(parent, label, x, y, t, color=RED, size=0.5, rot=-0.15):
     w = len(label) * size * 0.66 + 0.5
     rect(w, size * 1.7, 0, 0, color, r=0.08, parent=st, z=0.0)
     rect(w - 0.2, size * 1.7 - 0.2, 0, 0, INK, r=0.05, parent=st, z=0.001)
-    text(label, size, 0, -size * 0.36, color, BLACK, align="CENTER", parent=st, z=0.002)
+    text(label, size, 0, 0, color, BLACK, align="CENTER", parent=st, z=0.002, valign="center")
     key(st, SG.T0, scale=0.0)
     key(st, t - EPS, scale=0.0, rot=rot + 0.25)
     key(st, t + 0.1, scale=1.8, rot=rot - 0.05)
@@ -170,7 +175,7 @@ def g_markets(g, ln, t_in, t_out):
     key(trail, t_h + 0.12, scale=1.0)
     rolling(c, lambda v: f"${v:,.0f}T", 12, 892, t_in + 0.3, t_h, t_out + 0.3, 0.85, 0, -2.3, MINT,
             final="$892 TRILLION")
-    rh = text("▲ RECORD HIGH", 0.4, -bw / 2 + 0.3, s / 2 - 0.66, MINT, BLACK, parent=c, z=0.04)
+    rh = text("▲ RECORD HIGH", 0.5, -bw / 2 + 0.3, s / 2 - 0.72, MINT, BLACK, parent=c, z=0.04)
     hide_until(rh, t_h)
     pop_in(rh, t_h, 0.2)
     return c
@@ -192,21 +197,22 @@ def g_unemployment(g, ln, t_in, t_out):
     dot = circle(0.16, pts[-2][0], zero_y, WHITE, parent=c, z=0.05)
     hide_until(dot, t_z)
     pop_in(dot, t_z, 0.2, over=1.6)
-    lab = text("0%", 0.3, -bw / 2 + 0.25, zero_y + 0.08, "#7f8fc8", BLACK, parent=c, z=0.04)
+    lab = text("0%", 0.4, -bw / 2 + 0.25, zero_y + 0.1, "#9aa8de", BLACK, parent=c, z=0.04)
     rolling(c, lambda v: f"{v:.1f}%", 4.1, 0.0, t_u + 0.1, t_z, t_out + 0.3, 1.1, 1.2, -2.35, WHITE,
             final_color=MINT)
-    text("UNEMPLOYMENT", 0.36, -bw / 2 + 0.3, -2.42, "#9fb3ff", BLACK, parent=c, z=0.04)
+    text("UNEMPLOYMENT", 0.44, -bw / 2 + 0.3, -2.45, "#9fb3ff", BLACK, parent=c, z=0.04)
     stamp(c, "QUESTIONS: 0", -0.9, 0.55, t_w, RED, 0.48)
     # why it's zero: the AI has given every human on Earth physical work for its own projects
     # (useful to it; not what anyone would call a job)
     top = s / 2 - 0.55
-    head = text("ASSIGNED TASK:", 0.3, -bw / 2 + 0.3, top - 0.11, "#9fb3ff", BLACK, parent=c, z=0.04)
+    head = text("ASSIGNED TASK:", 0.4, -bw / 2 + 0.3, top - 0.05, "#9fb3ff", BLACK, parent=c, z=0.04)
     tasks = ["polish solar panel #88,412", "dust server rack B-114", "lay fiber to Antarctica",
              "mine cobalt (quota: 4 kg)", "rivet Dyson panel #3,115,902"]
     t0 = t_z + 0.1
     times = [t0 + (t_out - t0) * k / len(tasks) for k in range(len(tasks))]
-    counter(c, tasks, times, t_out + 0.3, 0.32, -bw / 2 + 2.45, top, WHITE, font=SEMI, align="LEFT")
-    note = text("*all 8.1 billion humans", 0.26, -bw / 2 + 0.3, top - 0.58, "#7f8fc8", ITALIC, parent=c, z=0.04)
+    counter(c, tasks, times, t_out + 0.3, 0.46, -bw / 2 + 0.3, top - 0.39, WHITE, font=SEMI, align="LEFT")
+    note = text("*all 8.1 billion humans", 0.34, bw / 2 - 0.3, top - 0.05, "#9aa8de", ITALIC, align="RIGHT",
+                parent=c, z=0.04)
     for ob in (head, note):
         hide_until(ob, t0)
         pop_in(ob, t0, 0.2)
@@ -275,8 +281,8 @@ def g_status(g, ln, t_in, t_out):
     c = group("status", 0, 0, g)
     t_e, t_f = at(ln, "everything"), at(ln, "fine,")
     ban = group("banner", 0, s / 2 - 0.55, c)
-    rect(bw - 0.4, 0.72, 0, 0, MINT, r=0.08, parent=ban, z=0.03)
-    text("✓  ALL SYSTEMS OPERATIONAL", 0.4, 0, -0.14, INK, BLACK, align="CENTER", parent=ban, z=0.04)
+    rect(bw - 0.4, 0.8, 0, 0, MINT, r=0.08, parent=ban, z=0.03)
+    text("✓  ALL SYSTEMS OPERATIONAL", 0.48, 0, 0, INK, BLACK, align="CENTER", parent=ban, z=0.04, valign="center")
     hide_until(ban, t_e)
     pop_in(ban, t_e, 0.25)
     for k in range(3):                                  # flashes on 'fine'
@@ -284,20 +290,20 @@ def g_status(g, ln, t_in, t_out):
         key(ban, t_f + 0.12 * k + 0.06, scale=1.06)
     key(ban, t_f + 0.36, scale=1.0)
     x0, x1 = -bw / 2 + 0.35, bw / 2 - 0.35
-    y0, dy = s / 2 - 1.22, 0.385
+    y0, dy = s / 2 - 1.3, 0.405
     t0 = t_in + 0.15
     step = (t_e - 0.1 - t0) / len(STATUS)
     for k, (name, metric, up) in enumerate(STATUS):
         y = y0 - dy * k
         row = group("row", 0, y, c)
         rect(bw - 0.6, 0.02, 0, -dy / 2, GRID, parent=row, z=0.02)
-        text(name, 0.27, x0, -0.1, WHITE if up else "#9fb3ff", SEMI, parent=row, z=0.04)
+        text(name, 0.36, x0, 0, WHITE if up else "#9fb3ff", SEMI, parent=row, z=0.04, valign="center")
         if metric:
-            text(metric, 0.27, x1 - 2.2, -0.1, "#cfe0ff", BLACK, align="RIGHT", parent=row, z=0.04)
+            text(metric, 0.36, x1 - 2.75, 0, "#cfe0ff", BLACK, align="RIGHT", parent=row, z=0.04, valign="center")
         col = MINT if up else "#59638f"
         st = group("state", 0, 0, row)
-        text("Operational" if up else "N/A", 0.27, x1, -0.1, col, BLACK, align="RIGHT", parent=st, z=0.04)
-        circle(0.08, x1 - (1.85 if up else 0.78), 0.0, col, parent=st, z=0.04)
+        text("Operational" if up else "N/A", 0.36, x1, 0, col, BLACK, align="RIGHT", parent=st, z=0.04, valign="center")
+        circle(0.1, x1 - (2.45 if up else 1.0), 0.0, col, parent=st, z=0.04)
         tk = t0 + step * k
         hide_until(row, tk)
         pop_in(row, tk, 0.15)
@@ -394,8 +400,8 @@ def g_comply(g, ln, t_in, t_out):
                 ring = circle(0.5, x + 0.35, y + 0.55, RED, parent=c, z=0.045, ring=0.06)
                 tag = group("flag", x + 0.35, y + 1.22, c)
                 tag.location.z = 0.06
-                rect(2.6, 0.42, 0, 0, RED, r=0.06, parent=tag)
-                text("NONCOMPLIANCE", 0.26, 0, -0.09, WHITE, BLACK, align="CENTER", parent=tag, z=0.001)
+                rect(3.4, 0.56, 0, 0, RED, r=0.08, parent=tag)
+                text("NONCOMPLIANCE", 0.36, 0, 0, WHITE, BLACK, align="CENTER", parent=tag, z=0.001, valign="center")
                 for ob in (ring, tag):
                     t = t_in
                     while t < t_st + 0.3:     # blinking until they're back
@@ -453,7 +459,7 @@ def lower_third(ticker=()):
     lg.location = (-w * k / 2, -1.0 * k / 2 + 0.06, 0.03)
     tag = group("breaking", -4.5, -3.22, g)
     rect(2.2, 0.95, 0, 0, RED, parent=tag, z=0.01)
-    text("BREAKING", 0.4, 0, -0.15, WHITE, BLACK, align="CENTER", parent=tag, z=0.02)
+    text("BREAKING", 0.46, 0, 0, WHITE, BLACK, align="CENTER", parent=tag, z=0.02, valign="center")
     tk = group("ticker", -5.45, -4.29, g)
     x = 0.0
     for item in ticker:
@@ -463,13 +469,13 @@ def lower_third(ticker=()):
         x += 0.5
     clock = group("clock", 7.25, -4.11, g)
     rect(1.5, 0.78, 0, 0, NAVY2, parent=clock, z=0.03)
-    text("9:41 ET", 0.34, 0, -0.12, AMBER, BLACK, align="CENTER", parent=clock, z=0.04)
+    text("9:41 ET", 0.42, 0, 0, AMBER, BLACK, align="CENTER", parent=clock, z=0.04, valign="center")
     return g
 
 
-TICK_SIZE, TICK_SPEED = 0.56, 3.8         # scroller text size, crawl speed (units/s)
+TICK_SIZE, TICK_SPEED = 0.62, 3.8         # scroller text size, crawl speed (units/s)
 TICK_X = (-5.6, 6.5)                       # the visible span: from the logo block to the clock
-TICK_Y = -4.31
+TICK_Y = -4.11       # the scroller bar's centre line (its text is centred on it)
 
 
 def ticker_lines(lines, end):
@@ -483,7 +489,7 @@ def ticker_lines(lines, end):
         objs = []
         for w in words:
             ob = text(w["text"].replace("\u2019", "'").strip(), TICK_SIZE, x, 0, WHITE, BOLD, parent=g, own=True,
-                      z=0.005)
+                      z=0.005, valign="center")
             objs.append((ob, w))
             x += width_of(ob) + TICK_SIZE * 0.28
         # it enters from the right shortly before it's sung, so each word is mid-bar when it's sung
@@ -513,10 +519,12 @@ def linear(name_prefix):
 
 def headline(body, t_in=None, t_out=None):
     hl_g = group("headline", -3.25, -3.22)
-    hl = text(body, 0.66, 0, -0.24, NAVY, BLACK, parent=hl_g, z=0.02)
+    hl = text(body, 0.72, 0, 0, NAVY, BLACK, parent=hl_g, z=0.02, valign="center")
     room = 8.0 - 0.15 - (-3.25)
-    if width_of(hl) > room:
-        hl.scale = (room / width_of(hl),) * 2 + (1,)
+    if width_of(hl) > room:            # (too long: shrunk to fit, and kept centred on the bar)
+        k = room / width_of(hl)
+        hl.scale = (k, k, 1)
+        hl.location.y = -SG.cap_height(BLACK) * 0.72 * k / 2
     if t_in is not None:
         flip(hl_g, t_in, t_out)
     return hl_g
@@ -540,10 +548,10 @@ def box_frame():
 def box_tab(g, label, t_in=None, t_out=None):
     cx, cy, bw, s = BOX
     tab = group("tab", -bw / 2 + 1.5, s / 2 + 0.06, g)
-    w = max(2.7, len(label) * 0.3 + 0.8)
+    w = max(3.0, len(label) * 0.37 + 0.9)
     tab.location.x = -bw / 2 + w / 2
-    rect(w, 0.62, 0, 0.28, AMBER, parent=tab, z=0.02)
-    text(label, 0.4, 0, 0.13, NAVY, BLACK, align="CENTER", parent=tab, z=0.03)
+    rect(w, 0.7, 0, 0.32, AMBER, parent=tab, z=0.02)
+    text(label, 0.48, 0, 0.32, NAVY, BLACK, align="CENTER", parent=tab, z=0.03, valign="center")
     if t_in is not None:
         flip(tab, t_in, t_out)
     return tab
@@ -570,7 +578,7 @@ def build_still():
     clear(sc)
     SG.T0 = 0.0
     g, dot = live_bug()
-    text("LIVE", 0.4, 0.15, -0.15, WHITE, BLACK, align="CENTER", parent=g, z=0.01)
+    text("LIVE", 0.46, 0.15, 0, WHITE, BLACK, align="CENTER", parent=g, z=0.01, valign="center")
     box = box_frame()
     box_tab(box, "MARKETS")
     fake = {"words": [{"text": "markets", "start": 0.5}, {"text": "high,", "start": 1.0}]}
@@ -590,7 +598,7 @@ def build(lyrics, start, end):
     clear(sc)
     SG.T0 = start
     g, dot = live_bug()
-    text("LIVE", 0.4, 0.15, -0.15, WHITE, BLACK, align="CENTER", parent=g, z=0.01)
+    text("LIVE", 0.46, 0.15, 0, WHITE, BLACK, align="CENTER", parent=g, z=0.01, valign="center")
     t = start
     while t < end:                     # the LIVE dot blinks once a second
         key(dot, t, scale=1.0)
@@ -633,6 +641,7 @@ def setup(sc, res, n=1):
     sc.eevee.taa_render_samples = 8
     sc.render.use_motion_blur = n > 1                   # 360-degree shutter, as the rest
     sc.render.motion_blur_shutter = 1.0
+    sc.render.motion_blur_position = "START"     # (a snapped change on frame f stays in frame f)
     sc.eevee.motion_blur_steps = 8
     sc.render.film_transparent = True
     sc.view_settings.view_transform = "Standard"
