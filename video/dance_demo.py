@@ -866,6 +866,8 @@ def main():
         sc.eevee.use_raytracing = sc.eevee.use_fast_gi = not A.preview
     if office:
         OS.preview_lights(A.preview)
+    if yacht:
+        YS.shadow_budget(sc)
     if (office or yacht) and A.layer:
         split_tv_pass(sc, A.layer, "slide" if office else "led")
     if A.flat:

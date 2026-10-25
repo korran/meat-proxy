@@ -486,6 +486,25 @@ def lighting(sc):
     SL.aim(sun, tuple(-c for c in d))
 
 
+SUN_SHADOW_RES = 0.004    # the sun's finest shadow texel (units): coarser than the default (0.001)
+AREA_SHADOW_RES = 0.002   # ...and the area lights' (key, fill, rim)
+
+
+def shadow_budget(sc):
+    """Keep the shadow maps inside EEVEE's shadow memory (its pool is at its maximum already). In
+    the opening zoom the camera sees the whole aft deck and comes close to the Founder: at 1440p
+    the sun's shadow maps then needed more than the pool, and EEVEE dropped random pieces of
+    them each frame (his shadow flickered). The sun's shadows are capped at a texel that still
+    looks sharp at this distance."""
+    for ob in bpy.data.objects:
+        if ob.type != "LIGHT":
+            continue
+        if ob.data.type == "SUN":
+            ob.data.shadow_maximum_resolution = SUN_SHADOW_RES
+        elif ob.data.type == "AREA":                 # (the key, fill and rim: a little coarser too)
+            ob.data.shadow_maximum_resolution = AREA_SHADOW_RES
+
+
 def setup_render(sc, res, preview):
     sc.render.engine = "BLENDER_EEVEE_NEXT"
     sc.render.resolution_y = res
