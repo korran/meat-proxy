@@ -342,8 +342,8 @@ def plan_phones(sched, lyric_band_top):
             ph = min(0.94 * h, 0.94 * w / PHONE_ASPECT)
             return ph, ((x0 + x1) / 2, (y0 + y1) / 2)
         wanted = [s for s, fn in (("L", lf), ("R", rf)) if fn]
-        if len(wanted) == 1:                        # a lone graphic: the other side from the last one
-            last_side = "R" if last_side == "L" else "L"
+        if len(wanted) == 1:                        # a lone graphic: the roomier side (most lines have one
+            last_side = max(("L", "R"), key=lambda sd: fit(sd)[0])     # each side now, so no need to alternate)
             wanted_slots = [last_side]
         else:                                       # one each side (never side by side)
             wanted_slots = wanted
