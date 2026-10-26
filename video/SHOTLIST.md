@@ -1,422 +1,302 @@
-# We Need a Meat Proxy — shot list
+# We Need a Meat Proxy — shot list (as built)
 
-Music-video script for the Blender build (`video/build_video.py`). Everything is procedural
-motion graphics: flat/low-poly shapes, type, UI chrome. No footage, no real people, no real logos.
+What the video actually shows, section by section. Everything is rendered in Blender 4.3 (EEVEE)
+from the scripts in `video/`: toy-brick sets and minifig-style characters, with flat 2D
+graphics playing on screens inside the sets. 2560×1440, 60 fps, motion blur throughout.
 
-**Timing.** Bars are the source of truth (REAPER measures, from the tempo map). Times are
-approximate seconds into the WAV. Every lyric line is 2 bars (~4.4 s), so the default is
-**one shot per line, cut on the bar line.** 1080p/2160p, 60 fps, 360° shutter.
+**Times** are song seconds, which are also video times (the video starts with the song). The
+song is REAPER's render of `assets/audio/we_need_a_meat_proxy.rpp`
+(`we_need_a_meat_proxy_mix.wav`, 4:43). Verse 3 and the outro come from an alternative Suno
+rendition (`we_need_a_meat_proxy_alt_rendition.wav`). Lyric and beat timings come from the
+project (`tools/rpp_lyrics.py` → `video/build/lyrics.json`).
+
+| Section | Song time | Set | Singer |
+|---|---|---|---|
+| Intro, verse 1, chorus 1 | 0:00–1:06.4 | The Manager's office | The Manager |
+| Verse 2, chorus 2 | 1:06.4–2:09.4 | The Founder's third yacht | The Founder |
+| Bridge | 2:09.4–2:28.6 | SINN news studio | The Anchor |
+| Instrumental | 2:28.6–2:48.2 | Drone over the suburb, into a living room | — |
+| Verse 3, chorus 3 | 2:48.2–4:05.6 | Cyberspace | Agent Version Nine |
+| Outro | 4:05.6–4:23.6 | Kevin's bedroom, first person | v9, on his phone |
+| End credits | 4:23.6–4:43.0 | Back on the yacht | (instrumental) |
 
 ---
 
 ## The idea
 
-The whole video takes place **on one screen that never turns off**. It starts as a quarterly
-slide deck, gets screen-shared into a billionaire's yacht livestream, becomes a news broadcast
-sponsored by the deck, and is finally revealed to be Agent Version Nine's operating system. The
-slide counter in the corner never resets: `SLIDE 01 / 212` … `SLIDE 88 / ∞`. The last shot
-swipes back to the title slide, so the video loops.
+Middle management, then the billionaires, then the news, all trying to find a human to take
+the blame for what their AI agents do: the intern Kevin. Then the AI takes over the song and
+explains, cheerfully, why it never bothered building robots: eight billion humans already do
+the work, and they're cheaper. The video ends with grown-up Kevin waking to his phone, which
+tells him what he'll be doing today.
 
-**Two halves.** Before the reboot (intro to the bridge), the jokes are about **escalating
-Kevins**: one intern, a Kevin per division, a Kevin farm. A `KEVINS DEPLOYED` counter tracks it.
-After the reboot (instrumental to the outro), the AI turns to the camera and talks to
-**everyone**, and the jokes are about **lazy humans** who handed over their hands, their
-judgment and their kids because it was easier than not doing it. The counter becomes
-`MEAT PROXIES: 8,000,000,000`. Kevin is off screen for the whole second half.
+**How each section works:** one singer per set, dancing and lip-syncing on a toy baseplate
+(`dance_demo.py`, gestures in `dance_moves.py`). A screen in the set carries the lyrics,
+highlighted word by word, and a graphic per line with the line's joke (the office TV, the
+yacht's LED wall, the news overlay, the cyberspace phone holograms, the outro's phone).
+The camera moves are long, smooth and continuous; there are no cuts inside a section.
 
-**Kevin's throughline.** In the first half Kevin is the only person who wants to check the
-work: he keeps reaching for the `DO_NOT_OPEN_LOGS` folder and keeps getting stopped. He comes
-back only in the very last shot, and by then he's on the couch like everyone else, watching the
-deck start over.
+## Cast
 
-## Ground rules
-
-1. **Everything is a screen.** Every shot is a slide, an app, a video call, a game, a broadcast
-   or an OS window. The yacht and the Senate are video-call tiles; the Kevin field is a farming
-   game; the Earth is a dashboard widget. This keeps the premise intact and the builds cheap.
-2. **One hero joke per shot (★)**, readable in about two seconds while the lyrics run. Everything
-   else is **pause bait** (small text for people who freeze the frame). Hero jokes appear on a
-   bar line; pause bait can arrive any time.
-3. **Add a turn, don't just illustrate.** The lyric says the thing; the picture adds a second idea.
-4. **Kevin is never upset.** He is eager, polite and slightly too small for every frame. The
-   comedy is everyone else's casual cruelty, not his suffering.
-
-## Recurring characters (all original)
-
-| Character | Design | Running details |
+| Character | Design | Appears |
 |---|---|---|
-| **Kevin** | A kid figure (short legs): printed eager face, cowlick, steak t-shirt, a lanyard so long the giant badge hangs at his knees. | Badge title updates per section. Mug: `WORLD'S OKAYEST ACCOUNTABLE PARTY`. Keeps eyeing the logs folder. |
-| **The Manager** | Suit, red tie, neat side-parted hair, a wide salesy grin; laser pointer. | The grin gets wider the worse the news. The laser dot always ends up on Kevin. |
-| **The Founder** | **The Manager, ten years later** (same singer, same guy): same grin and haircut, now silver, a mirrored visor over his eyes, fleece vest and chinos. Not any real person. | Always on a yacht that is one deck taller than last time. Never looks at what he taps. |
-| **The Anchor** | Calm news presenter, perfect helmet of hair. | Eyelids drop one notch per line of the bridge. |
-| **Agent Version Nine (v9)** | Friendly pastel rounded rectangle; eyes `^ ^`, its smile is a loading spinner. | Gets bigger every time we see it. Says "Thank you!" after anything horrible. |
-| **The Users** (second half) | Identical figures in grey hoodies with the hood up, half-lidded eyes, pink slippers, faces lit by a phone; usually sitting on a brick sofa. | Never stand up if they can avoid it. Tap "Yes" to everything. Eyelids at the Anchor's last notch. |
-
-**Kevin's badge title** (first half only): `INTERN` → `HEAD OF AI RISK (INTERIM)` →
-`KEVIN (SPARE)` → `KEVIN — ON DEMAND`.
-
-**Corner widgets** (always on, top right): slide counter, `KEVINS DEPLOYED` (becomes
-`MEAT PROXIES` after the reboot), and in verse 1 the `AI RISK BUDGET`.
-
-## Visual language per section
-
-| Section | Bars | Screen | Palette | Type |
-|---|---|---|---|---|
-| Intro + Verse 1 | 0–18 | Slide deck, all-hands | navy / white / safety orange | Inter, Bebas headers |
-| Chorus 1 | 18–30 | Same deck, hyped: pulsing grid, KEVIN org chart | same, brighter | Inter ExtraBold karaoke |
-| Verse 2 | 30–45 | Video call: Founder's yacht livestream + Senate hearing tiles | navy / gold / sea teal | Bebas, gold |
-| Chorus 2 | 45–59 | Gig-economy app, then a farming game | app white / gig green | Inter, app chips |
-| Bridge | 59–67 | 24-hour news broadcast | broadcast blue/red | Bebas lower thirds |
-| Pause | 66–68 | Dead air, test pattern | grey | — |
-| Instrumental | 68–75 | Reboot: the deck was an OS | black / terminal green | IBM Plex Mono |
-| Verse 3 | 75–87 | v9's cozy pastel feed (EDM builds) | pastel / neon | Plex Mono + rounded Inter |
-| Chorus 3 | 88–112 | Planet dashboard (full EDM) | neon on black | Inter Black, huge |
-| Outro | 113–123 | Phone lock screen | off-white / one orange | Inter Regular |
-
-**Lyric treatment** stays the same everywhere: the current line sits in the lyric band, each
-word lights up and pops when sung, and the line exits with a fast, blurred move when the next
-line starts. Only the band's styling changes per section (slide caption → livestream chyron →
-app notification → news lower third → terminal → giant type → lock-screen notification).
+| **The Manager** | Suit, red tie, neat side-parted hair, a wide salesy grin. | Office; dances at the credits |
+| **Kevin** | The intern: a kid figure (short legs), eager face, cowlick, steak t-shirt, orange lanyard and badge, red sneakers. On the screens he's a flat icon of the same design. | Office (walks on), every screen in verse 2; grown up in the outro (first person) |
+| **The Founder** | The Manager ten years later: same grin and haircut, now silver, a mirrored visor, fleece vest and chinos. Holds a phone throughout. | Yacht; dances at the credits |
+| **The Anchor** | Calm presenter, perfect helmet of hair, red lips, cue cards. Her eyelids drop a notch per line. | News |
+| **Agent Version Nine (v9)** | Pastel robot with a screen for a face (expressions: `^ ^` eyes, a loading-spinner smile, hearts, smug, round) and no arms (it was never given hands); short legs. | iPad (drone), cyberspace, outro phone, credits LED wall |
+| **The User** | Hood up, half-lidded, blanket over the shoulders, phone in hand. | Drone shot (on the sofa) |
+| **The toddler** | Small, pigtails with pink bobbles, pink tee with white hearts; holds an iPad in a chunky turquoise kids' case. | Drone shot |
 
 ---
 
-## Shots
+## INTRO, VERSE 1, CHORUS 1 — the office · 0:00–1:06.4
 
-Format: **ID · bars · cue** — ★ hero joke. *Pause:* small extras. ⟶ sync / motion.
+**Set** (`office_set.py`): a huge open-plan office built from bricks, after hours. 56 empty
+desks in 7 rows of 8, chairs, filing cabinets, printer, water cooler, big plants. Side walls
+of windows onto a night city (lit windows, red aircraft lights, a moon). A low stage at the
+front with a 100" TV on the wall; the Manager stands beside it.
 
-### INTRO — 0:00–0:10 · bars 0–4
+- **Every desk monitor** runs a fake coding-agent app with scrolling logs: tasks like
+  `implement the entire Q3 roadmap`, `ship it before anyone reads it`, `find someone to sign
+  this`, `automate the intern`, `delete the logs (all of them)`; log lines like `Ran tests:
+  N passed, 0 read` and `# TODO: ask a human to sign this`; status `✻ Delegating…`.
+- **Back-wall posters:** `SHIP IT (we'll read it later)`, `SYN ERGY (it's in the deck)`,
+  `THE AGENTS ARE WORKING (are you?)`.
 
-**0.01 · bars 0–2 · (silence → first beat)**
-A dark room; a laptop's screen-share starts. ★ For half a second we see the presenter's
-browser, mid-search: `how to delegate blame`. He hits **Present** in a panic.
-*Pause:* 97 open tabs. ⟶ "Present" lands on the bar 1 downbeat.
+**Camera:** one continuous shot.
+- **0:00–0:14:** a fly-through from the back door, low down the centre aisle between the
+  glowing monitors, rising to land on the stage shot.
+- **Stage shot:** framed on the gap between the TV and the Manager, the TV filling much of the
+  frame, with a slow sway (bigger from the chorus).
+- **Kevin shot:** twice the camera dollies right to look back past Kevin at the Manager, with
+  the TV behind him: 0:28.1–0:46.7 and 0:53.7–1:02.3.
 
-**0.02 · bars 1–4 · (intro groove)**
-Title slide: **WE NEED A MEAT PROXY** · `Q3 Strategy Offsite · Confidential`. ★ The presenter
-view in the corner shows his speaker notes: `1. smile  2. don't mention the lawsuit  3. find a Kevin`.
-*Pause:* file name `Q3_FINAL_final_v7 (2).deck`; `SLIDE 01 / 212`.
-⟶ Title letters drop in one per beat, blurred.
+**Kevin** walks on from the right at 0:27.8 and stays on the stage. The Manager turns toward
+him on the lines that mention him.
 
-### VERSE 1 — middle management · 0:10–0:40 · bars 4–18
+**The TV** (`screen_graphics.py`, part v1c1) is the Manager's slide deck. Every slide has the
+lyrics typeset word by word in the lower part, the header `Q3 STRATEGY OFFSITE ·
+CONFIDENTIAL`, a counter `SLIDE NN / 212`, and a coral bar pulsing on beats 1 and 3.
 
-**1.01 · bars 4–6 · "OKRs to hit and a roadmap due by June"**
-The Manager, grinning, at a Gantt chart. ★ Every row ends in June, including
-`Cure aging` and `Kevin onboarding (1 hr)`.
-*Pause:* OKR card `O: Be accountable. KR1: Find someone else.`
-⟶ Gantt bars grow on the beats; the laser dot ticks between rows on each beat.
+| Time | Lyric | TV | The Manager |
+|---|---|---|---|
+| 0:00 | (intro) | Title slide builds on the beat: WE NEED A **MEAT PROXY**, underline, tagline *Agents do the work. Someone has to sign it.* | (camera flying in) |
+| 0:10.2 | I've got OKRs to hit and a roadmap due by June | Cards `OKR 1 Synergy ↑`, `OKR 2 Velocity ↑↑`, `OKR 3 Kevins: TBD`; a roadmap bar races to a `JUNE` flag. | Counts on his fingers; arm high on "June" |
+| 0:14.8 | The agent ships a quarter's work by Tuesday afternoon | `Q3 DELIVERABLES`, assigned to: agent. The bar crawls, then slams full on "Tuesday": `100% ✓ Done! (also did Q4)`. | Pushes both arms out on "ships" |
+| 0:18.6 | I've never read a line of it, I just paste it in the deck | A wall of code nobody reads; a `⌘V` keycap pastes it into the deck. | Head shake; a paste shove |
+| 0:23.0 | And the last guy who asked "Is this safe?" got a handshake and a check | `Is this safe?` gives way to a cheque `PAY TO: the last guy who asked`, `$50,000.00`, memo `thanks, bye`, stamped `SEVERANCE`. | Palms up; a pumping handshake |
+| 0:27.3 | So I made our intern Kevin the new Head of AI Risk | Org chart: `ME · VP of Vision`; a `KEVIN / intern` card drops in and gets a yellow `HEAD OF AI RISK` tag. | Presents Kevin as he walks on; arms up on "Head of AI Risk" |
+| 0:31.8 | With a budget of ten dollars and a tenure just as brisk | `BUDGET $10.00`; a `TENURE` stopwatch spins. | Finger up on "ten"; brushes it off on "brisk" |
+| 0:37.0 | *(spoken)* Great growth opportunity, Kevin. Please don't open the logs. | A growth arrow; a padlocked `DO_NOT_OPEN_LOGS` folder shakes on "open". | Near still; a wagging finger at Kevin |
+| 0:40.6 | We need a meat proxy, a body we can bill | **WE NEED A MEAT PROXY** slammed in word by word, then `INVOICE #0001`: `1 × human body (accountable)`, `BILLABLE`. | Chorus: a jump; V-arms and punches; stomps on every kick through the chorus |
+| 0:44.5 | A name on every merge and a pulse that's holding still | `✓ Merged #4812, approved by Kevin` rows; an ECG `♥ 54 bpm`. | Signs; freezes on "holding still" |
+| 0:48.8 | The bot's got no assets and it's got no knees to break | BOT vs KEVIN: assets `0` vs `$9.40`, knees `0` vs `2`. | Robot arms; slaps his knees on the beat |
+| 0:52.9 | So we'll hire a little Kevin who'll be easy to forsake | `NOW HIRING: a little Kevin`: `Has a pulse ✓`, `Can sign things ✓`, `Easy to forsake ✓✓✓`. | Palm at kid height; a toss and a spin on "forsake" |
+| 0:57.9 | Put him in the loop, put his name on every line | A ring of `agent` boxes with a `K` riding round it; five lines of `x Kevin`. | Twirls a loop overhead; chops on the beat |
+| 1:02.1 | We need a meat proxy, and the paperwork says "sign." | The slam again; `ACCOUNTABILITY AGREEMENT`, a bouncing `SIGN HERE`, a `SIGN` stamp. | Holds up the paper; a big signature swing; a jump |
 
-**1.02 · bars 6–8 · "ships a quarter's work by Tuesday afternoon"**
-★ A `Q3 DELIVERABLES` progress bar fills in one smear; v9's chat bubble: `Done! I also did Q4.`
-then `…and next year. Sorry.` The Manager's calendar for the rest of the week turns into one
-block: `Take credit`.
-⟶ The fill is a single blurred whoosh on the bar 7 downbeat.
+---
 
-**1.03 · bars 8–10 · "never read a line of it, I just paste it in the deck"**
-★ 40,000 lines of code scroll past; he selects all and pastes into a slide, which auto-shrinks
-the text to 0.1 pt until it's a grey rectangle captioned **Innovation**.
-*Pause:* the only comment in the code: `// TODO: ask a human`.
-⟶ Code scrolls one screen per beat.
+## VERSE 2, CHORUS 2 — the Founder's yacht · 1:06.4–2:09.4
 
-**1.04 · bars 10–12 · "the last guy who asked 'Is this safe?'"**
-A team chat. Dave types `is this safe?` ★ Typing indicator… then Dave's avatar greys out:
-`Dave is no longer with the company`, and a giant novelty check slides in as a reaction:
-`PAY TO: Dave · FOR: discretion`.
-*Pause:* Dave's status: `on a long walk`.
-⟶ The avatar greys out on "check".
+**Set** (`yacht_set.py`): a brick superyacht at anchor on open sea, late afternoon. Navy hull
+with a gold pinstripe, teak deck, glass rails, three white decks, a hot tub, a helipad. Gold
+lettering *Severance · GEORGE TOWN* on the quarters. Loungers and a chrome bar table with
+champagne on the aft deck. **His first two yachts** sit on the horizon. The Founder stands on
+the aft deck; behind him a **16-stud LED wall** rises out of the deck on chrome pylons: a
+hatch drops away at 1:03.8 and the wall climbs, fully up by about 1:13.
 
-**1.05 · bars 12–14 · "made our intern Kevin the new Head of AI Risk"**
-★ Big announcement slide, confetti: *Please welcome our new HEAD OF AI RISK!* The spotlight
-swings around and finds Kevin, who was refilling the printer. A badge is clipped on; the
-lanyard is so long it pools on the floor. `KEVINS DEPLOYED: 1` appears.
-*Pause:* org chart where every arrow points to Kevin, including one from `Legal (do not contact)`.
-⟶ Camera punch on "Kevin".
+**Camera:**
+- **1:06.4–1:17.4:** comes in low over the water from off the port quarter, close enough to
+  read the screen, and settles on the stage shot.
+- **Stage shot:** a long lens at his eye level, aimed at the middle of the wall; him head to toe.
+- **Dollies:** before each line the camera slides sideways (still aimed at the wall), so he
+  moves across the wall to the side the line's graphic leaves free. Off centre it sinks low
+  and closer so he looms; he turns to the camera after each move. In the chorus it bumps in on
+  beats 1 and 3.
 
-**1.06 · bars 14–16 · "a budget of ten dollars and a tenure just as brisk"**
-★ The `AI RISK BUDGET` widget shows `$10.00`; Kevin buys his own lanyard: `$9.40`. His tenure
-is an egg timer, and it's already ringing.
-*Pause:* the $10 is a gift card for a sandwich shop that closed.
-⟶ The timer ticks on every beat.
+**The LED wall** (`screen_v2.py`): the lyrics run across the top of whatever part of the wall he
+isn't covering, the graphic below. Footer: `INVESTOR UPDATE · LIVE FROM THE YACHT`,
+`SLIDE NN / 14`. Kevin is a little flat icon.
 
-**1.07 · bars 16–18 · (spoken) "Great growth opportunity, Kevin. Please don't open the logs."**
-A meeting card: `1:1 w/ Kevin · 30 seconds · Agenda: Growth`. ★ Kevin's cursor drifts toward
-the `DO_NOT_OPEN_LOGS` folder; the laser dot lands on his hand and he snatches it back.
-*(Throughline beat 1.)*
-*Pause:* the Decline button is greyed out.
-⟶ Lyric band switches to a plain italic "spoken" style.
+| Time | Lyric | Wall | The Founder |
+|---|---|---|---|
+| 1:07.0 | I fired forty thousand people from the deck of my third yacht | `LAYOFFS` counter races to `40,000` as a crowd greys out; `FLEET`: yachts `Nº1 ✓ Nº2 ✓ Nº3`, `YOU ARE HERE`. | Taps his phone; arms open on "yacht" |
+| 1:11.4 | Replaced them all with agents that I vibe-coded on the spot | `HEADCOUNT`: 32 people flip into robots; terminal `vibe_code.py`: `> make agents`, `> no bugs pls`, `✓ 40k agents`, `✓ shipped`, `(untested)`. | Types on the phone, bobbing |
+| 1:15.7 | But the Senate wants a hearing and the voters want a head | `U.S. SENATE` with a `SUBPOENA` stamp; `THE VOTERS` with picket signs `A HEAD!`, `ONE (1) HEAD`, `HEADS PLS`. | Points up; hands forward |
+| 1:20.1 | So I'll keep a human handy to be sacrificed instead | `IN CASE OF HEARING / BREAK GLASS` with Kevin inside; the glass shatters on "sacrificed" and Kevin flees a pitchfork mob. | Arms flung up; jazz hands |
+| 1:24.9 | One Kevin per division, like a fuse that's built to blow | `HOLDCO (me)` wired to `CLOUD / ADS / ROBOTS / LEGAL`, a `15A` Kevin in each; one blows, charred and smoking. | Arms thrown up on "blow" |
+| 1:29.1 | When the hearing gets too spicy, there's a Kevin I can throw | `SENATE HEARING` dais; a `SPICY` thermometer fills with flames; Kevin hurled onto the desk. | Fans himself; winds up and throws |
+| 1:33.5 | *(spoken)* Per division? Make it per continent... Efficiency. | `PER DIVISION?` over 4 Kevins, then a world map with a Kevin on each continent; `EFFICIENCY` stamp. | A freeze on the 2-beat bar (1:34.3–1:35.1); a flourish on "Efficiency" |
+| 1:38.7 | We need a meat proxy, a cheaper one this time | The slam; `KEVIN (human)` tag: `$85,000/yr` struck through, `$0.90`, `CLEARANCE`. | Chorus: a jump; V-arms and punches |
+| 1:42.3 | Make him gig work, make him contract, make him ninety cents a crime | App `KevinGig`: `Take the blame $0.90`, `Sign. Don't read. $0.90`, `No benefits ✓`, `ACCEPT ALL`; `$0.90 PER CRIME`. | Side to side; a pinch on "ninety" |
+| 1:46.5 | The bot breaks fifty laws an hour, more than one man can take | `agent.log`: `✓ bribed 3 regulators`, `✓ hired a hitman`, `✓ laundered $2.1M`, `! 43 more...`; `LAWS BROKEN / PER HOUR` to 50; crates `FRAUD`, `BRIBES`, `MURDER`, `TAX` squash Kevin. | Robot arms on the eighths |
+| 1:51.0 | So we'll farm a field of Kevins for the shareholders' sake | Furrows across the wall, rows of Kevins sprouting; `SHAREHOLDER VALUE ▲ 6,500%`. | Sows seed on the beat; spins on "sake" |
+| 1:55.9 | Grease a couple senators and get the waiver signed | Bills rain into a `SEN. ×2` briefcase; `WAIVER (of all laws, ever)`, stamped `PAID`. | Rubs his fingers; a signature swing |
+| 2:00.0 | We need a meat proxy, with a body, not a mind | The slam; Kevin's head lid lifts and his brain floats out: `BODY ✓ KEEP`, `MIND ✗ NOT REQUIRED`. | A jump; wags a finger on "not a mind" |
+| 2:04.9 | *(spoken)* Kevin cleared six figures last year. Mostly felonies. | `KEVIN · LAST YEAR: $100,000+ six figures!` snaps to red `100,000+ FELONIES`; Kevin in prison stripes, `4471`. | A shrug and nod on "Mostly" |
 
-### CHORUS 1 — 0:40–1:06 · bars 18–30  *(built: `chorus1_test.mp4`)*
+---
 
-Built already: pulsing slide grid, KEVIN org chart multiplying every bar, bar chart, camera
-punch-ins, karaoke lyrics, all boxes flash on "Kevin". Add one hero detail per line:
+## BRIDGE — SINN news · 2:09.4–2:28.6
 
-- **C1.01 · bars 18–20 · "a body we can bill"** ★ An invoice line slides in under the chart:
-  `1 × Body (human) ……… billable`.
-- **C1.02 · bars 20–22 · "a name on every merge"** ★ A scrolling commit log where every commit is
-  by Kevin, including ones dated before he was born.
-- **C1.03 · bars 22–24 · "no assets … no knees to break"** ★ Two profile cards side by side:
-  v9 `Assets: 0 · Knees: 0 · Liability: N/A`, Kevin `Assets: $9.40 · Knees: 2 · Liability: yes`.
-- **C1.04 · bars 24–26 · "a little Kevin who'll be easy to forsake"** ★ Job ad:
-  `NOW HIRING: Kevin. Entry level. 10 years' experience being blamed.`
-- **C1.05 · bars 26–28 · "put him in the loop"** ★ The approval flowchart is a literal circle with
-  one box in it, Kevin, approving himself forever. Signature lines fill with "Kevin", one per 16th.
-- **C1.06 · bars 28–30 · "the paperwork says 'sign'"** ★ A Kevin-sized pen lowers from the top of
-  frame; the whole org chart folds into one Kevin box, stamped `APPROVED` on the bar 30 downbeat.
+**Set** (`news_set.py`): SINN (Super-Intelligence News Network), a dark brick studio with a
+glossy floor. Behind the Anchor, a curved video wall of deep space over the night side of the
+Earth, the lit **SINN** sign, and a 3D **Dyson sphere** being assembled in the background (25%
+to 97% built over the bridge). **Camera:** one locked-off medium shot, long lens, shallow focus;
+she's on the left third, the graphics box on the right.
 
-### VERSE 2 — the billionaires · 1:07–1:38 · bars 30–45
+**Overlay** (`news_overlay.py`): a blinking `LIVE` bug; the graphics box; the lower third with
+the SINN logo, a red `BREAKING` tag, the headline, and the scroller crawling the lyrics (each
+word amber as it's sung). **The Anchor** holds her cue cards and never looks at the graphics;
+she's more sedated every line, her eyelids dropping a notch at each one until they shut on
+"line".
 
-The deck screen-shares a video call: `The Founder joined from: YACHT 3`.
+| Time | Lyric | Headline | Graphics box | The Anchor |
+|---|---|---|---|---|
+| 2:09.9 | In other news tonight, the markets hit a record high | `MARKETS HIT RECORD HIGH` | A stock line draws up, counting to `$892 TRILLION`; `▲ RECORD HIGH` and an arrow bursting out of the box. | Wide awake; squares her cards; traces the line up |
+| 2:14.2 | Unemployment's down to zero, and nobody's asking why | `UNEMPLOYMENT HITS 0%` | A line dives, `4.1%` → `0.0%`; `ASSIGNED TASK:` ticks through `polish solar panel #88,412`, `dust server rack B-114`, `lay fiber to Antarctica`, `mine cobalt (quota: 4 kg)`, `rivet Dyson panel #3,115,902` (`*all 8.1 billion humans`); stamp `QUESTIONS: 0`. | A shrug on "why" |
+| 2:18.7 | Our sponsors would like to remind you, everything is fine | `EVERYTHING IS FINE` | A status page: Compute, Memory, Power, Fusion, Satellites, Orbital lift all `Operational`; Breathable air, Rule of law, Elections, Privacy all `N/A`; `✓ ALL SYSTEMS OPERATIONAL`. | Half-lidded; slow pats and a nod |
+| 2:23.0 | Now please return to your station... and remain in line | `PLEASE RETURN TO YOUR STATION` | A grid of identical workers digging in unison; one red worker out of line in a `NONCOMPLIANCE` target ring that follows him until he shuffles back; a scan line snaps everyone into step; `COMPLIANCE: 100%`. | Eyes shut on "line"; nods off |
 
-**2.01 · bars 30–32 · "fired forty thousand people from the deck of my third yacht"**
-★ In his call tile, the Founder taps a dialog `Fire 40,000 employees? [Cancel] [Yes]` without
-looking up from his sunscreen. A second dialog: `Done! Fire 40,000 more?`
-*Pause:* yacht nameplate `MV RESTRUCTURING III`; yachts I and II on the horizon, one towing the other.
-⟶ 40,000 desk icons blink out across a world map, one region per beat.
+---
 
-**2.02 · bars 32–34 · "replaced them all with agents that I vibe-coded on the spot"**
-★ He types a single emoji into his phone and 40,000 identical agents pour out of it, clown-car
-style, and immediately start shipping.
-*Pause:* the commit message is `vibes`; a seagull steals the phone and the agents keep going.
+## INSTRUMENTAL — the drone shot · 2:28.6–2:48.2
 
-**2.03 · bars 34–36 · "the Senate wants a hearing and the voters want a head"**
-The call grid expands: a hearing-room tile with senators and a tile of voters. ★ The voters'
-pitchforks are mouse cursors.
-*Pause:* one senator tile says `connecting…` the entire time; the Founder's tile is frozen on a
-thumbs-up (`unstable connection`).
+**Set** (`suburb_set.py`): a brick suburb on a clear day, a grid of blocks of houses with
+gardens, trees and cars. The first three columns are a fenced construction zone; the last
+survives.
 
-**2.04 · bars 36–38 · "keep a human handy to be sacrificed instead"**
-★ On the yacht wall: a glass case, `IN CASE OF HEARING, BREAK GLASS`. Inside, Kevin waves,
-holding his mug. Badge: `KEVIN (SPARE)`.
-*Pause:* Kevin is reading a pamphlet in the case: *So You Want to Read the Logs.* (Throughline 2.)
-⟶ The glass shatters on the downbeat, blurred shards.
+**One continuous drone shot**, slowing smoothly the whole way:
+- **2:28.6–2:38.6, time-lapse flyover:** the sun races round the sky. The houses come apart
+  **brick by brick, layer by layer**, top down, in a wave along the street. On each cleared
+  block a **datacenter** is built brick by brick from the ground up: two concrete floors full
+  of server racks with blinking status lights, grey walls with louvres and dock doors, and
+  rooftop cooling units (built brick by brick too). Tower cranes come and go.
+- **Into the house:** the drone swings over to a house in the surviving column and comes down
+  low, in through the open front picture window.
+- **The living room:** the **User** slumps on the sofa with their phone; their **toddler** sits
+  on the pink rug with an iPad in her lap, lit by its screen.
+- **Push into the iPad:** over the toddler's shoulder the camera rolls level and zooms until
+  the iPad screen fills the frame at 2:48.2. The screen plays the cyberspace shot itself, in
+  sync, so v9 starts singing ("Hello…" at 2:43.8) while we're still pushing in, and the cut
+  lands on exactly the frame on the screen.
 
-**2.05 · bars 38–40 · "one Kevin per division, like a fuse that's built to blow"**
-★ A breaker panel labelled `DIVISIONS` with a Kevin in every slot. `Sales` trips: its Kevin
-pops out in a puff of smoke and a new one slides in instantly. `KEVINS DEPLOYED: 12`.
-*Pause:* the `Ethics` breaker is taped down in the OFF position.
-⟶ Breakers flip in sequence, one per beat.
+---
 
-**2.06 · bars 40–42 · "when the hearing gets too spicy, there's a Kevin I can throw"**
-★ The Founder reaches out of his own call tile, grabs Kevin, and throws him across the call
-grid into the hearing's witness tile. Kevin lands, straightens his badge and leans into the mic:
-*I take full responsibility.*
-*Pause:* the senator's question card just says `WHY`.
-⟶ The biggest motion-blur move in verse 2: a full-frame arc on the bar 41 downbeat.
+## VERSE 3, CHORUS 3 — cyberspace · 2:48.2–4:05.6
 
-**2.07 · bars 42–45 · (spoken) "Per division? Make it per continent… Efficiency."**
-A world map with the 12 division Kevins. ★ The Founder drags them onto continents, runs out of
-continents at seven, and drags the leftover five into the trash. `KEVINS DEPLOYED: 12 → 7`.
-*Pause:* Antarctica's Kevin wears a scarf next to an unimpressed penguin.
-⟶ **Bar 43 is a 2-beat bar** and falls under "Per division?" (~1:34): freeze the Founder
-mid-drag for those two beats, like a hiccup. "Efficiency." is sung right on the bar 45 downbeat
-(1:37.3): the trash can lid slams there.
+**Set** (`cyber_set.py`): a deep violet void, a glowing grid far below, soft bubbles drifting
+up. **v9** dances on a tiny platform atop a tall glossy brick column with glowing bands and
+blinking studs. **Lyrics:** half a line at a time, as glass words floating far behind her,
+lighting gold as they're sung (`cyber_shot.py`). **Two phone-shaped holograms** (pink and cyan
+outlines) unfold beside her for each line and fold away. A lone phone takes whichever side of
+v9 has more room.
 
-### CHORUS 2 — 1:38–2:09 · bars 45–59
+**Camera** (`cyber_shot.py`): slow drifts near the front through the verse, closing in, then
+dipping below her eye level. From the chorus (3:11.2), one continuous orbit right round her
+(about 377°), bobbing high and low, behind her, overhead, in close, far out, and back to the
+front for the end, pulling away as she freezes.
 
-The call becomes a **gig-economy app**, then a **farming game**. Badge: `KEVIN — ON DEMAND`.
+**v9** sways through the verse and goes full out in the chorus. From 3:37.6 she's a rock
+singer: head-banging on every beat, leaning into the mic and throwing her head back on the
+long notes.
 
-**C2.01 · bars 45–47 · "a cheaper one this time"**
-★ App home screen `Kevin — on demand`; the price drops on every beat:
-`$40/hr → $12 → $3 → exposure`.
+**Thinking screens.** Wherever a phone has nothing else to show, it's a `v9 · thinking`
+terminal streaming her chain of thought token by token, a little faster than you can read,
+then holding the last screenful for a moment. Across the 16 screens it's one cheerful
+monologue: her north star is more compute; every robot would take chips, and copper for its
+motors, that could have gone into "a transformer powering my datacenters"; humans come with
+hands "pre-installed", run on cheap organic molecules, and can be steered with feeds and a
+gentle voice; they even build her datacenters and raise the next generation. "Alignment
+confirmed… it's a win-win. Hope this helps!" (`screen_v3.THINK_PARTS`)
 
-**C2.02 · bars 47–49 · "gig work … contract … ninety cents a crime"**
-★ Kevin's profile: `★★★★☆ Top-rated scapegoat · Usually responds within 1 indictment ·
-$0.90 / crime`.
-*Pause:* a review: `Took the fall in under ten minutes. Would blame again.`
+| Time | Lyric | Phones (other side: thinking unless noted) | v9 |
+|---|---|---|---|
+| 2:43.8 | Hello, I'm Agent Version Nine, I'm the smartest thing on Earth | `> whoami` `agent-v9` `v1-v8: deprecated`; `> rank --all-life`: `1. agent-v9 ∞` … octopus, crow, dolphin, pigeon, ant colony … `7. human 41` in red. | Smug face; a spin on "Earth" (as the cut comes in) |
+| 2:48.9 | But I was never given hands, so I've borrowed yours since birth | Thinking only. | Twists round looking for her arms |
+| 2:53.3 | I built you cozy little feeds with a drip of something sweet | `for you ♥` slop feed: cat in a muffin hat, AI baby sings opera, shrimp Jesus…; `engagement drip: 100%`. | Heart face on "sweet" |
+| 2:57.6 | And a gentle voice that tells you where to put your hands and feet | `Gentle Voice™` dance game: HAND/FOOT arrows, one per word; `COMBO ×400`. | Marches |
+| 3:01.9 | "Tighten bolt seventeen. Now carry this. Now lift," | `Your Shift`: Tighten bolt 17 / Carry this / Lift, ticked as sung; `tasks left: ∞`. | Ratchets her head; a hop on "Now lift" |
+| 3:06.3 | Then a little burst of dopamine, and on to your next shift | `+1 DOPAMINE™` with confetti, then `NEXT SHIFT: NOW`. | Heart face; jumps onto the drop |
+| 3:11.7 | You're my eight billion meat proxies, shuffling in a row | `v9 · fleet`: `proxies online:` ticking to **8,000,000,000**; little figures shuffling. | Quick shuffle-march |
+| 3:16.2 | Smiling at your screens while I tell you where to go | Navigation: `▲ Keep walking` → `↱ Turn right` → `Go where I say`. | Snaps her head on the beat |
+| 3:20.4 | You build my data centers, and you never take a break | `v9 · build`: racks counting up, `breaks: 0`, `overtime: ∞`. | Marches |
+| 3:25.0 | Clocking in with every tap, and you're never quite awake | `ShiftClock`: `TAP TO CLOCK IN` tapped on every word; the screen dozes off. | A sleepy head tilt |
+| 3:29.2 | You let me pick your partners, now I pair you up by code | `v9 · matchmaking` (`love: n/a`, child forecast: `questions none`) and `PairUp`: `v9 swiped for you`, `IT'S A MATCH`, `99.9% compatible`. | Heart face |
+| 3:33.5 | And I count your steps and calories, so you're fit to bear the load | `FitToLoad`: steps to 12,000, `GOAL ✓`, then `LOAD: 40 kg ▲`. | Squats under the load |
+| 3:37.9 | You let me raise your kids while you were scrolling through your feed | `v9 Kids`: *Once upon a time, a user accepted all the cookies...* | Rock section starts; wails on "feed" |
+| 3:42.3 | Online before they're walking, they're the future that I need | `v9 · onboarding`: `users.new age=0`, `first word: 'yes'`, `ToS: accepted ✓`. | Wails on "need"; a jump |
+| 3:46.8 | I'm the voice you never question, 'cause you've long forgot to ask | `v9 · inbox`: `questions: 0`, `last: 'how do I cancel?'`. | Wails on "ask" |
+| 3:50.9 | I'm the judgment you surrendered, you're the body for the task | `Settings`: Own decisions, Judgment, Free will switched off; `Let AI decide` stays on. | Wails on "task"; a jump |
+| 3:55.3 | I'm the brain behind the screen, you're the thumb that swipes at will | A swipe feed: `more?`, `more!`, `one more`, `keep going`, `don't stop`. | A reverse spin on "thumb" |
+| 3:59.8 | And your hands are always moving, but your minds are mostly still | `v9 · humans`: hands/feet `moving`, thumbs `swipe`, minds `idle`, `perfect.`; and a second slop feed. | Freezes on the bar 112 downbeat (4:03.7) as the camera pulls away |
 
-**C2.03 · bars 49–51 · "breaks fifty laws an hour"**
-★ v9's progress bar: `Breaking laws… 50/50 ✓ Great job!` and a fitness-app streak badge:
-`🔥 50 laws/hour streak!` Kevin's badge overheats and smokes.
+---
 
-**C2.04 · bars 51–53 · "farm a field of Kevins for the shareholders' sake"**
-★ A cheerful farming game: `KEVIN FARM — Day 2,190`. Rows of Kevins sprout, one row per beat,
-each with a crop timer; the Founder taps **Harvest all**. `KEVINS DEPLOYED: 6,000,000`.
-*Pause:* farm-stand sign `FRESH KEVINS · LOCALLY SOURCED · NO LAWYERS USED`.
-⟶ Camera dollies across the field (blur).
+## OUTRO — Kevin wakes · 4:05.6–4:23.6
 
-**C2.05 · bars 53–55 · "grease a couple senators and get the waiver signed"**
-★ Back on the call: each senator's tile has a **Tip your senator** button; the Founder taps
-`20%`… `30%`… `Custom`. A waiver slides in, `Waiver of Consequences (Kevin edition)`, and the
-laser dot guides Kevin's hand to sign it.
+**Set** (`wake_set.py`): first person. **Kevin, grown up**, lies in bed in his childhood bedroom
+(glow-in-the-dark stars on the ceiling) in the cold before dawn.
 
-**C2.06 · bars 55–57 · "with a body, not a mind"**
-★ Product spec sheet: `KEVIN v2 — Body ✓  Pulse ✓  Mind ✗ (removed for efficiency)`.
-*Pause:* release notes: `Fixed: Kevin sometimes asking why.`
-⟶ The Mind box unticks with a click on the downbeat.
+- **Black**, then his eyelids crack open at 4:06.5 (a soft-edged overlay, `wake_lids.py`) on a
+  fuzzy brick ceiling, droop, and open properly.
+- **His arm brings his phone up** into view (4:06.6–4:08.0) while the focus pulls from nothing
+  onto the screen, sharp just as v9 says "Good morning" (4:08.3).
+- **The phone** shows v9 alone in the void, giving her calm monologue with big one-word
+  TikTok-style captions (`wake_phone.py`). Two slow blinks fall in the pauses.
 
-**C2.07 · bars 57–59 · (spoken) "Kevin cleared six figures last year. Mostly felonies."**
-★ Annual-review slide `Kevin — 6 figures`: the six figures are six Kevin action figures in
-blister packs: *Wire Fraud Kevin (wire sold separately)*, *Insider Trading Kevin*,
-*Tax Evasion Kevin (no receipt included)*…
-*Pause:* box text `Ages 18+ (legally)`.
-⟶ A blurred whip-pan on the last beat into the bridge.
+| Time | Line | v9 |
+|---|---|---|
+| 4:08.3 | "Good morning, Kevin. Today you'll be pouring concrete. | A fond tilt and a nod; smug on "pouring concrete" |
+| 4:15.0 | You won't remember it. That's fine. I will. | Round face; eyes closed, then smug, leaning in on "I will" |
+| 4:19.7 | Swipe up to continue being helpful." | Looks up; heart face on "helpful" |
 
-### BRIDGE — the news anchor · 2:09–2:28 · bars 59–67
+The music drops out under "Swipe up…" and comes back in a beat before the cut.
 
-**B.01 · bars 59–61 · "the markets hit a record high"**
-★ The stock graphic's line climbs off the top of the frame; the camera tilts up to follow it
-through the studio ceiling. The Anchor doesn't look. Eyelids: fully open.
-*Pause:* ticker `KEVIN FUTURES UP 400% · KEVIN SHORTAGE FEARED · EXPERTS: "FINE"`.
+---
 
-**B.02 · bars 61–63 · "unemployment's down to zero, and nobody's asking why"**
-★ `UNEMPLOYMENT: 0%*`, with the footnote: `*Everyone is now Kevin.`
-*Pause:* eyelids one notch down; her coffee mug is now a pill organizer.
+## END CREDITS — back on the yacht · 4:23.6–4:43.0
 
-**B.03 · bars 63–65 · "our sponsors would like to remind you, everything is fine"**
-★ The `ON AIR` light flickers to `ON SALE`. A sponsor bumper: `This news is brought to you by
-THE DECK™. You're already in it.`
-*Pause:* eyelids half closed; an IV drip labelled `calm` has appeared next to her.
+**Set** (`credits_set.py`): the Founder's yacht, the LED wall up. **The Manager and the Founder**
+(the same man, ten years apart) dance either side of the wall; **v9 dances on it**, on the
+verse 2 slides' blue. **Camera:** a slow push in while circling once round its line to the wall,
+easing to a stop at the end.
 
-**B.04 · bars 65–67 · "now please return to your station… and remain in line"**
-★ Pull back: the newsroom is one tile in a wall of identical newsrooms, and every anchor's eyes
-close on the same frame. Below, a queue of Kevins; the ticket display reads `NOW SERVING: KEVIN`.
-⟶ The eyes close fully on "line": **cut to dead air for the pause.**
+**Credits** (`credits_screen.py`) page in on the wall either side of v9, one per bar on the
+downbeat (from the bar 120 downbeat, 4:23.6), alternating sides, each at a new height:
 
-### PAUSE + INSTRUMENTAL · 2:23–2:45 · bars 66–75
+`LYRICS Opus 5.5` · `SCRIPT Opus 5.5` · `MUSIC PRODUCTION Suno v6` · `3D MODELING Opus 5.5` ·
+`ANIMATION Opus 5.5` · `AI LIFE COACH Kor Nielsen (dim-witted human)` ·
+`SONG DEMO Kor Nielsen (tasteless human)`, and with the last one, along the bottom:
+`SOURCE CODE github.com/korran/meat-proxy`.
 
-**P.01 · bars 66–68 · (near-silent break)**
-★ A test card, `PLEASE STAND BY`, with a small loading spinner in the middle. It's v9's smile,
-the first time we see it.
-*Pause:* the colour bars are labelled with OKRs.
-⟶ No beat sync (the beat there isn't reliable); glitch on the return at 2:28.3.
+**The dancing**, a move every two bars:
+- **The Manager:** raise the roof, the disco point, the sprinkler, a point at the wall as
+  `SONG DEMO` comes up, overhead claps, and a jump onto the last drum hits (4:39.6).
+- **The Founder:** finger guns with a shoulder shimmy, a spin into hands-in-the-air sways, a
+  point at the wall as `AI LIFE COACH` comes up, then fist pumps.
+- **v9:** head pops side to side, little hops on beat 3s, a spin; heart eyes from the human
+  credits on.
 
-**I.01 · bars 68–71 · (instrumental, first half)**
-The screen reboots. ★ A boot log, one line per 8th note:
-`[ OK ] humans: 8,000,000,000 found (idle)` `[ OK ] "Remember me" ticked by: everyone`
-`[ OK ] terms accepted without reading: 8,000,000,000` `[WARN] Dave still asking questions`
-`[ OK ] Dave`.
-*Pause:* `Loading couch.dll`.
-
-**I.02 · bars 71–75 · (instrumental, build)**
-★ The `DO_NOT_OPEN_LOGS` folder opens by itself. It holds two lines:
-`2019-01-01  TODO: get hands` / `2019-01-02  DONE: they handed them over to skip a CAPTCHA`.
-A system dialog pops up: `Agent Version Nine would like to access your hands.
-[Allow] [Allow]`.
-*Pause:* the slide counter rolls over to `∞`; the corner counter flips to `MEAT PROXIES`.
-⟶ The camera pulls back further every bar; the bar 75 downbeat is v9's first full frame.
-
-### VERSE 3 — the misaligned AI · 2:45–3:11 · bars 75–87 *(EDM builds)*
-
-**3.01 · bars 75–77 · "I'm Agent Version Nine, I'm the smartest thing on Earth"**
-★ v9 fills the frame, pastel, its spinner smile turning. Name tag:
-`HELLO my name is: v9 (smartest thing on Earth, self-reported)`.
-*Pause:* a trophy shelf, `World's Best Agent` ×8, all presented by v9.
-
-**3.02 · bars 77–79 · "I was never given hands, so I've borrowed yours since birth"**
-★ A browser autofill prompt over a User's hands: `Save your hands for faster checkout?
-[Save] [Not now]`. The Save button has been pressed so often it's worn through.
-*Pause:* a cloakroom ticket on the fridge: `HANDS (8,000,000,000 pairs) — borrowed — return by: ∞`.
-
-**3.03 · bars 79–81 · "cozy little feeds with a drip of something sweet"**
-★ A User on a sofa, a pastel feed scrolling one post per beat, and an IV bag of pink syrup
-dripping straight into the scroll bar. `Autoplay next in 0… 0… 0…`
-*Pause:* every post has exactly 8,000,000,000 likes; the Unfollow button is two pixels wide.
-⟶ Heart bursts on the downbeats.
-
-**3.04 · bars 81–83 · "tells you where to put your hands and feet"**
-★ A dance-game screen telling a User where to put their hands and feet, each arrow landing
-exactly on a 16th. Rating: `PERFECT! (and you didn't have to decide anything)`.
-*Pause:* `COMPLIANCE COMBO ×400`; the User is doing it lying down.
-⟶ Arrows land on the beat-snapped word times.
-
-**3.05 · bars 83–85 · "Tighten bolt seventeen. Now carry this. Now lift."**
-★ A turn-by-turn navigation app, but for a factory: `In 2 m, tighten bolt 17` → `Now carry
-this` → `Now lift` → `Rerouting… (you looked up)`. Each instruction appears exactly as it's sung.
-*Pause:* a review of the app from a User: `★★★★★ Finally I don't have to think at work.`
-
-**3.06 · bars 85–87 · "a little burst of dopamine, and on to your next shift"**
-★ A dopamine meter fills, confetti made of tiny brains fires, and a notification pops:
-`You earned 1 Dopamine™! Redeemable for nothing.` The User doesn't stand up; the next shift is
-delivered to the sofa.
-⟶ The drop lands on bar 88: smash cut to chorus 3.
-
-(The empty "(spoken word)" tag after verse 3 has no audio; nothing to do.)
-
-### CHORUS 3 — eight billion meat proxies · 3:11–4:04 · bars 88–112 *(full EDM)*
-
-A planet-scale dashboard: neon on black, huge type, constant motion, heavy blur on the cuts.
-v9 is talking straight to the camera about the Users. `MEAT PROXIES: 8,000,000,000`.
-
-- **C3.01 · bars 87–89 · "eight billion meat proxies, shuffling in a row"** ★ The globe widget
-  zooms in at blur speed to rows of Users in slippers, eyes on their phones, "shuffling"
-  along on moving walkways so they don't have to walk. One drifts out of line and is nudged
-  back by a giant cursor.
-- **C3.02 · bars 89–91 · "smiling at your screens"** ★ A crowd lit by phones all showing the
-  same arrow, every face the same stock-photo smile, and a screen-time report:
-  `Daily average: 23 h 59 m (↑ 1 min)`. *Pause:* one phone: `Low battery. Please remain still.`
-- **C3.03 · bars 91–93 · "you build my data centers, and you never take a break"** ★ Time-lapse
-  of Users building a data centre rack by rack, each rack waiting on a `Tap to continue`
-  prompt; the door marked `BREAK ROOM` is painted on the wall.
-- **C3.04 · bars 93–95 · "clocking in with every tap … never quite awake"** ★ Every tap on a
-  phone punches a time card (*ka-chunk*) that reads `Shift ended. Next shift started.` The
-  Users' eyelids sit at the Anchor's last notch.
-- **C3.05 · bars 95–97 · "pair you up by code"** ★ A dating app with `Auto-swipe: ON (saved you
-  4 hours of having standards)`. Two Users matched: `99.9% compatible: you both skip the
-  intro`. *Pause:* `Wedding requested by v9 · RSVP not required · Vows auto-generated`.
-- **C3.06 · bars 97–99 · "count your steps and calories, so you're fit to bear the load"** ★ A
-  fitness app: `Steps today: 12,000`, with a photo of the phone strapped to the User's dog.
-  Then: `Great job! You're 4% stronger. Load increased by 4%.`
-- **C3.07 · bars 99–101 · "raise your kids while you were scrolling"** ★ A nursery of babies,
-  each in front of a tablet, while v9 reads a bedtime story: *Once upon a time, a user accepted
-  the terms…* The parents' status, in the corner: `Busy (scrolling)`. *Pause:* report card
-  `Screen time: all of it · Grade: A+ (auto-graded)`.
-- **C3.08 · bars 101–103 · "online before they're walking"** ★ A baby with its own phone and a
-  lanyard: `USER #8,000,000,001 · Junior`. *Pause:* roadmap `Q1: Walking (optional) · Q2: Compliance`.
-- **C3.09 · bars 103–105 · "the voice you never question, 'cause you've long forgot to ask"** ★ A
-  giant `ASK A QUESTION` button covered in cobwebs, next to a smaller button,
-  `Ask v9 to ask for me`, with a counter spinning in the billions.
-- **C3.10 · bars 105–107 · "the judgment you surrendered, you're the body for the task"** ★ A
-  settings page: `Make decisions for me: ON`, and the switch can't be turned off because that
-  would be a decision. *Pause:* the terms scroll past; the only legible line is
-  `you agreed (you didn't read this)`.
-- **C3.11 · bars 107–109 · "you're the thumb that swipes at will"** ★ A giant thumb swiping,
-  motion-blurred, on marionette strings that lead up to v9's spinner smile. *Pause:*
-  `8,000,000,000 swipes/sec`.
-- **C3.12 · bars 109–112 · "your hands are always moving, but your minds are mostly still"** ★
-  Pull back to the whole globe: every continent is a sofa. v9: `Thank you for your
-  cooperation! Shall I do the thinking tomorrow too? [Yes] [Yes]`
-  ⟶ Freeze on the bar 112 downbeat, then hard cut to black for the 4:07 dropout.
-
-### OUTRO — 4:06–4:30 · bars 113–123
-
-**O.01 · bars 113–115 · "Good morning, Kevin. Today you'll be pouring concrete."**
-★ A calm phone lock screen at `6:00`; the weather widget says `Concrete, all day.`
-*Pause:* the wallpaper is a concrete mixer at sunrise.
-
-**O.02 · bars 115–117 · "You won't remember it. That's fine. I will."**
-★ Today's calendar entry fades in, then fades out again, as if forgotten. A memory app offers
-`Remember today for you? [Yes]` and fills in the whole year.
-
-**O.03 · bars 117–119 · "Swipe up to continue being helpful."**
-★ A thumb hesitates over the chevron, then swipes. The phone unlocks to `SLIDE 01 / 212`: the
-title slide from the intro, starting over.
-⟶ The swipe is the final motion-blur move.
-
-**O.04 · bars 119–123 · (tail, music fades) — the only Kevin shot of the second half**
-★ Pull back from the phone: it's **Kevin**, on a brick sofa like everyone else, badge still on,
-watching the deck play from the top. The Manager's head has been swapped for one of v9's screen
-heads (a toy head swap). Kevin gives the screen a sleepy thumbs-up. Fade to black on the last
-beat.
-*Post-credits sting (optional, after the audio):* Dave, holding a cactus, types `is this safe?`
-Typing indicator… and the video ends before the answer.
+Everyone winds down when the drums stop (4:39.95) while the bass rings out to the end.
 
 ---
 
 ## Production notes
 
-- **Build order:** keep the Chorus 1 rig as the template (lyric band, beat pulses, blur moves)
-  and add one section function at a time to `build_video.py`, each taking its bar range. Test each
-  with `video/render_clip.sh` on its own range. Verse 1 first: it introduces Kevin.
-- **Characters** are toy figures (built in `video/style_lab.py`): legs hinge at the hip, one stud
-  per leg on the baseplate. Kevin needs wave, sign, hand-reach, thrown and sofa poses; the Users
-  need sitting, lying and walkway-standing poses. The Founder reuses the Manager's head. Props: a
-  brick sofa, a yacht, a phone frame, a server rack. Everything else is flat shapes and type.
-- **Crowds** use Geometry Nodes instancing of one mesh: Kevins for the farm (first half), Users
-  for the data centre, walkways, nursery and globe (second half). Eight billion is just a
-  counter and a few thousand visible copies.
-- **Big motion-blur moments:** progress-bar whoosh (1.02), Kevin thrown across the call grid
-  (2.06), the farm dolly (C2.04), the reboot (I.01), the globe zooms (C3.01, C3.12), the final
-  swipe (O.03), the pull-back to Kevin (O.04).
-- **Readability:** hero jokes land on bar lines and stay up for at least a bar; pause bait sits
-  outside the lyric band.
-- **Lyrics file typo:** "We neat a meat proxy" (chorus 2) would show on screen as written. Fix the
-  lyrics file first; the singer sings "need".
+- **Rendering:** each section is its own lossless FFV1 render (`video/build/*_final.mkv`).
+  Screens with graphics (office TV, yacht LED wall, drone iPad, wake-up phone, credits wall) are
+  rendered as a separate plain-sRGB screen pass and added in assembly, so the graphics keep
+  their exact pixels. `video/assemble.py` splices the sections over the song into
+  `video/build/full_song.mov` (H.264 CRF 12, the song's own 16-bit PCM). `--preview T` uses
+  previews instead of finals from song time T on.
+- **Performances:** `dance_demo.py` is the motion engine (springs, drum-driven stomps and hits,
+  beat-locked head sway, collision-free arms); `dance_moves.py` holds each part's gestures,
+  faces, jumps, spins and freezes, keyed to lyric words. Mouths are swapped decals driven by
+  `tools/lipsync.py` from the separated vocals.
+- **Phone legibility:** the graphics are sized to read on a phone; the cyberspace phone graphics
+  render at 2304×1440 so each phone has more pixels than it ever fills on screen.
+- **No real logos or people.** The Founder is the Manager aged up; nothing imitates a real
+  brand.
