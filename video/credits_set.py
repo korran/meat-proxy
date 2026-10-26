@@ -1,4 +1,4 @@
-"""The end credits (song 259.2 .. 269.56, when the music comes back up after v9's monologue): on
+"""The end credits (song 263.65 .. 283.01, when the music comes back up after v9's monologue): on
 the Founder's yacht, the LED wall up, the Manager and the Founder (the Manager ten years later)
 dancing either side of it while v9 dances on it, the credits paging in beside her
 (credits_screen.py).
@@ -27,7 +27,7 @@ from bricks import P  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, "build")
-T0, T1, FPS = 259.2, 269.56, 60
+T0, T1, FPS = 263.6468, 283.01, 60
 TAU = 2 * math.pi
 WALL_Y = YS.SY * P                       # the LED wall's front face
 DANCERS = (("manager", -1.2), ("founder", 1.2))   # who, and x: at either edge of the wall, just in front
@@ -178,7 +178,7 @@ def main():
     import argparse
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
-    ap.add_argument("--screen", required=True, help="the LED wall's video (credits_screen.py), its first frame at 259.2")
+    ap.add_argument("--screen", required=True, help="the LED wall's video (credits_screen.py), its first frame at 263.6468")
     ap.add_argument("--out", default=BUILD)
     ap.add_argument("--res", type=int, default=None)
     ap.add_argument("--preview", action="store_true")

@@ -588,9 +588,19 @@ def _mix(a, b, u):
     return {c: a[c] * (1 - u) + b[c] * u for c in a}
 
 
+CREDITS_T0, CREDITS_BAR = 263.6468, 2.2020   # the credits: from the bar 120 downbeat (a beat after the music comes back), a bar each
+CREDITS_STOP = 279.8     # the drums drop out (279.95, after beat 2 of bar 127; the bass rings on to the end): everyone winds down
+LAST_HIT = 279.611       # the last drum hits (bar 127, beat 2)
+
+
+def cb(n):
+    """Song time n bars into the credits (they page in once a bar: credits_screen.py)."""
+    return CREDITS_T0 + n * CREDITS_BAR
+
+
 def credits_manager_gestures(W, B):
     """The Manager, corporate-party energy: raise the roof, the disco point, the sprinkler, a point
-    at the screen when the Song Demo credit comes up, overhead claps; a jump onto the last downbeat."""
+    at the screen when the Song Demo credit comes up, overhead claps; a jump onto the last drum hits."""
     G = []
 
     def roof(t, u):           # both hands up, pushing at the ceiling on every beat
@@ -598,7 +608,7 @@ def credits_manager_gestures(W, B):
         p = _pulse(ph)
         return ({**arm(R, -2.35 - 0.35 * p, 0.35, 0.1, -1.1 + 0.35 * p),
                  **arm(Lf, -2.35 - 0.35 * p, 0.35, 0.1, -1.1 + 0.35 * p)}, {"hx": -0.06 * p})
-    G.append(Gesture(259.15, 261.3, roof, attack=0.15, release=0.25))
+    G.append(Gesture(cb(0) - 0.05, cb(2) - 0.05, roof, attack=0.15, release=0.25))
 
     def disco(t, u):          # right arm: up-and-out on 1 and 3, down-and-across on 2 and 4; hand on hip
         bi, ph = _beat(B, t)
@@ -607,25 +617,25 @@ def credits_manager_gestures(W, B):
         a, b = (down, up) if bi % 2 == 0 else (up, down)
         return ({**_mix(a, b, _snap(ph)), **arm(Lf, -0.15, 0.55, 0.0, -1.7)},
                 {"hy": 0.08 * (1 if bi % 2 == 0 else -1) * _snap(ph)})
-    G.append(Gesture(261.35, 263.5, disco, attack=0.12, release=0.2))
+    G.append(Gesture(cb(2), cb(4) - 0.05, disco, attack=0.12, release=0.2))
 
     def sprinkler(t, u):      # left hand behind his head, right arm ticking across in eighths, then back
         bi, ph = _beat(B, t)
         step = int((bi + ph) * 2) % 8
         z = -0.55 + 1.1 * step / 7
         return ({**arm(R, -1.45, 0.35, z, -0.15), **arm(Lf, -2.5, 0.45, 0.5, -2.2)}, {"yaw": 0.25 * z})
-    G.append(Gesture(263.55, 265.6, sprinkler, attack=0.15, release=0.2))
+    G.append(Gesture(cb(4), cb(6) - 0.15, sprinkler, attack=0.15, release=0.2))
 
     def point(t, u):          # points at the screen (on his left) as the Song Demo credit comes up
         return ({**arm(Lf, -1.55, 0.95, 0.0, -0.05), **arm(R, -0.2, 0.3, 0.0, -1.5)}, {"yaw": -0.3, "hz": -0.15})
-    G.append(Gesture(265.75, 266.75, point, attack=0.12, release=0.3))
+    G.append(Gesture(cb(6) - 0.05, cb(6) + 0.95, point, attack=0.12, release=0.3))     # (Song Demo: credit 6)
 
     def claps(t, u):          # hands together over his head on 2 and 4
         bi, ph = _beat(B, t)
         c = _pulse(ph, 0.12) if bi % 2 == 1 else 0.0
         return ({**arm(R, -2.85, 0.45 - 0.35 * c, 0.0, -0.35), **arm(Lf, -2.85, 0.45 - 0.35 * c, 0.0, -0.35)},
                 {"hx": -0.08})
-    G.append(Gesture(266.8, 268.3, claps, attack=0.2, release=0.4))
+    G.append(Gesture(cb(6.5), LAST_HIT - 0.55, claps, attack=0.2, release=0.4))
     return G
 
 
@@ -639,18 +649,18 @@ def credits_founder_gestures(W, B):
         p = _pulse(ph)
         return ({**arm(R, -1.35 - 0.15 * p, 0.25, -0.25, -0.55), **arm(Lf, -1.35 - 0.15 * p, 0.25, -0.25, -0.55)},
                 {"croll": 0.1 * math.sin(TAU * 4 * t), "hy": 0.06 * math.sin(TAU * 0.9 * t)})
-    G.append(Gesture(259.15, 261.2, guns, attack=0.15, release=0.25))
+    G.append(Gesture(cb(0) - 0.05, cb(2) - 0.1, guns, attack=0.15, release=0.25))
 
     def air(t, u):            # hands in the air, swaying with the half-time pulse
         bi, ph = _beat(B, t)
         sw = math.sin(math.pi * (bi + ph) / 2)
         return ({**arm(R, -2.7, 0.55, 0.3 * sw, -0.25), **arm(Lf, -2.7, 0.55, -0.3 * sw, -0.25)},
                 {"roll": 0.07 * sw, "hy": 0.1 * sw})
-    G.append(Gesture(262.0, 264.6, air, attack=0.3, release=0.25))
+    G.append(Gesture(cb(2) + 0.6, cb(5) - 0.1, air, attack=0.3, release=0.25))
 
     def point(t, u):          # points at the screen (on his right) as the AI Life Coach credit comes up
         return ({**arm(R, -1.55, 0.95, 0.0, -0.05), **arm(Lf, -0.2, 0.3, 0.0, -1.5)}, {"yaw": 0.3, "hz": 0.15})
-    G.append(Gesture(264.65, 265.65, point, attack=0.12, release=0.3))
+    G.append(Gesture(cb(5) - 0.05, cb(5) + 0.95, point, attack=0.12, release=0.3))     # (AI Life Coach: credit 5)
 
     def pumps(t, u):          # fist pumps, alternating hands on each beat
         bi, ph = _beat(B, t)
@@ -658,7 +668,7 @@ def credits_founder_gestures(W, B):
         hi, lo = (R, Lf) if bi % 2 == 0 else (Lf, R)
         return ({**arm(hi, -2.4 - 0.3 * p, 0.3, 0.0, -0.4 + 0.25 * p), **arm(lo, -0.6, 0.25, 0.0, -1.6)},
                 {"hx": -0.05 * p})
-    G.append(Gesture(265.8, 268.3, pumps, attack=0.2, release=0.4))
+    G.append(Gesture(cb(5) + 1.0, CREDITS_STOP, pumps, attack=0.2, release=0.5))
     return G
 
 
@@ -670,8 +680,8 @@ def credits_v9_gestures(W, B):
         bi, ph = _beat(B, t)
         side = 1 if bi % 2 == 0 else -1
         return ({}, {"hy": 0.16 * side * _snap(ph, 0.15), "hz": 0.1 * side * _snap(ph, 0.15)})
-    G.append(Gesture(259.15, 263.4, pops, attack=0.15, release=0.3))
-    G.append(Gesture(265.0, 268.3, pops, attack=0.3, release=0.4))
+    G.append(Gesture(cb(0) - 0.05, cb(4) - 0.15, pops, attack=0.15, release=0.3))
+    G.append(Gesture(cb(4) + 0.9, CREDITS_STOP, pops, attack=0.3, release=0.5))
     return G
 
 
@@ -794,19 +804,20 @@ PARTS = {
     # the end credits on the yacht, when the music comes back up after the monologue: the Manager
     # and the Founder dance either side of the LED wall, v9 dances on it
     **{f"credits_{who}": Part(
-        who, (259.2, 269.56), [(0, 1.15), (268.2, 1.15), (268.7, 0.25), (270.0, 0.2)],
-        chorus=(259.0, 268.5), drums=(259.0, 268.5), sway_end=259.0,       # (stomps on the kicks throughout)
+        who, (CREDITS_T0, 283.01), [(0, 1.15), (CREDITS_STOP - 0.05, 1.15), (CREDITS_STOP + 0.5, 0.25), (CREDITS_STOP + 1.7, 0.2)],
+        chorus=(cb(0) - 0.2, CREDITS_STOP + 0.2), drums=(cb(0) - 0.2, CREDITS_STOP + 0.2), sway_end=cb(0) - 0.2,   # (stomps on the kicks throughout)
         gestures=gest, jumps=jumps, spins=lambda W, sp=spins: sp, seed=seed,
         legs="kid" if who == "v9" else "adult", arms=who != "v9",
-        faces=(lambda W: [(264.6, 270.0, "heart")]) if who == "v9" else None)     # hearts: the human credits
+        faces=(lambda W: [(cb(5) - 0.1, 284.0, "heart")]) if who == "v9" else None)     # hearts: the human credits
        for who, gest, jumps, spins, seed in (
-           ("manager", credits_manager_gestures, [(267.75, 267.99, 0.07)], [], 11),
-           ("founder", credits_founder_gestures, [], [(261.3, 262.0, 1.0)], 23),
-           ("v9", credits_v9_gestures, [(260.15, 260.4, 0.05), (262.35, 262.6, 0.05), (266.95, 267.2, 0.06)],
-            [(263.5, 264.25, -1.0)], 31))},
+           ("manager", credits_manager_gestures, [(LAST_HIT - 0.24, LAST_HIT, 0.07)], [], 11),   # onto the last drum hits
+           ("founder", credits_founder_gestures, [], [(cb(2) - 0.1, cb(2) + 0.6, 1.0)], 23),
+           ("v9", credits_v9_gestures, [(cb(n) + CREDITS_BAR / 2 - 0.15, cb(n) + CREDITS_BAR / 2 + 0.1, 0.05 + 0.01 * (n > 4))
+                                        for n in (0, 1, 3, 6)],                    # (onto beat 3s)
+            [(cb(4) - 0.1, cb(4) + 0.65, -1.0)], 31))},
     # Agent Version Nine on Kevin's phone in the outro: a calm spoken monologue
     "outro": Part(
-        "v9", (245.6, 269.56), [(0, 0.15), (260.0, 0.12), (270.0, 0.1)], calm=1.0,
+        "v9", (245.6, 283.01), [(0, 0.15), (264.0, 0.12), (284.0, 0.1)], calm=1.0,
         chorus=(1e9, 1e9), drums=(1e9, 1e9), sway_end=1e9, gestures=outro_gestures,
         legs="kid", arms=False, faces=outro_faces),
     # Agent Version Nine: verse 3 (EDM building) and chorus 3 (full EDM); no arms, a screen face

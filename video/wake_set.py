@@ -6,7 +6,7 @@ one-word captions.
   blender -b --factory-startup --python video/wake_set.py -- --out video/build/wake_stills \\
       [--preview] [--res 1080] [--only open,phone]
   ... -- --fly --screen video/build/wake_phone.mkv [--preview] [--pass main|screen] [--patch A,B]
-                                     the whole shot (song 245.6 .. 259.2)
+                                     the whole shot (song 245.6 .. 263.65)
 
 The world: Kevin lies on his back in bed, head toward +y, face up. His upper body is a normal
 minifig (built facing -y, standing), turned to lie down, so its arm poses work as usual; only his
@@ -297,10 +297,10 @@ def camera_rig(sc, kev):
 
 
 # ---------------------------------------------------------------- the shot
-T0, T1, FPS = 245.6, 259.2, 60         # (the end credits cut in when the music comes back up)
-RISE = (247.2, 248.8)                  # the phone comes up into view (song time)...
+T0, T1, FPS = 245.6, 263.6468, 60      # (the end credits cut in on the bar 120 downbeat, a beat after the music comes back)
+RISE = (246.6, 248.0)                  # the phone comes up into view (song time), before "Good morning, Kevin"...
 LOWER = (1e9, 1e9 + 1)                 # ...(and could sink again; not before the cut)
-FOCUS_PULL = (247.9, 249.3)            # groggy focus (on nothing) -> on the phone
+FOCUS_PULL = (247.3, 248.25)            # groggy focus (on nothing) -> on the phone
 FOCUS_LOSE = (1e9, 1e9 + 1)            # ...(and back to nothing)
 RISE_FROM = Vector((0.09, -0.3, 0.06))  # where the phone comes up from (camera space, below the frame)
 LOWER_TO = Vector((0.05, -0.2, 0.05))

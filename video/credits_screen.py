@@ -13,8 +13,8 @@ import argparse
 import os
 import subprocess
 
-T0, T1 = 259.2, 269.56
-STEP = 1.1                 # a new credit every half bar
+T0, T1 = 263.6468, 283.01  # (the bar 120 downbeat, a beat after the music comes back, to the end)
+STEP = 2.2022              # a new credit every bar
 FONT_DIR = "/usr/share/fonts/opentype/inter"
 PW, PH = 2160, 1080        # layout units (the wall's graphics are 2:1)
 COLS = (479, 1682)         # the two columns' centres: halfway between the screen's edges and her (she
@@ -32,7 +32,6 @@ CREDITS = [
     ("Animation", "Opus 5.5", None, 520),
     ("AI Life Coach", "Kor Nielsen", "(dim-witted human)", 760),
     ("Song Demo", "Kor Nielsen", "(tasteless human)", 330),
-    ("Involuntary Producer", "Joel Nielsen", "(lucky human, owns 5090,|bad at IT security)", 340),
 ]
 # and along the bottom, under her, with the last credit, to the end
 SOURCE = ("Source Code", "github.com/korran/meat-proxy", 990)

@@ -21,7 +21,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 B = os.path.join(HERE, "build")
-SONG = os.path.join(ROOT, "assets", "audio", "we_need_a_meat_proxy.wav")
+SONG = os.path.join(ROOT, "assets", "audio", "we_need_a_meat_proxy_mix.wav")   # (REAPER's render of the project)
 FPS = 60
 
 # (name, [candidate files, best first], song time of the file's first frame, section start, end,
@@ -42,16 +42,21 @@ SECTIONS = [
     ("verse 3, chorus 3 (cyberspace)", ["cyber_v3c3_final.mkv", "cyber_v3c3_preview.mp4"], 162.6, 168.2, 245.6,
      [], 0),
     # Kevin wakes (first person): his phone's screen pass added, his eyelids laid over everything
-    ("outro: wake-up", ["wake_final.mkv", "wake.mp4"], 245.6, 245.6, 259.2,
+    ("outro: wake-up", ["wake_final.mkv", "wake.mp4"], 245.6, 245.6, 263.6468,
      [("add", ["wake_screen_final.mkv", "wake_screen.mkv"]), ("over", ["wake_lids.mkv", "wake_lids_540.mkv"])], 0),
     # the end credits: the LED wall's screen pass added (so the credits are the video's own pixels)
-    ("outro: credits (yacht)", ["credits_final.mkv", "credits.mp4"], 259.2, 259.2, None,
+    ("outro: credits (yacht)", ["credits_final.mkv", "credits.mp4"], 263.6468, 263.6468, None,
      [("add", ["credits_screen_final.mkv", "credits_screen.mkv"])], 0),
 ]
 
 
+PREVIEW = False      # --preview: skip the finals (when a section's timing has changed since its final)
+
+
 def pick(cands):
     for c in cands or []:
+        if PREVIEW and "_final" in c:
+            continue
         p = os.path.join(B, c)
         if os.path.exists(p):
             return p
@@ -72,7 +77,10 @@ def main():
     ap.add_argument("--list", action="store_true", help="just show what would be used")
     ap.add_argument("--from", dest="start", type=float, default=0.0,
                     help="only the sections from this song time on (e.g. 245.6: the outro), for a quick check")
+    ap.add_argument("--preview", action="store_true", help="use the previews even where there's a final")
     A = ap.parse_args()
+    global PREVIEW
+    PREVIEW = A.preview
     W, H = A.res * 16 // 9, A.res
     song_len = duration(SONG)
 

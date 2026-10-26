@@ -15,7 +15,7 @@ import re
 import subprocess
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-T0, T1 = 245.6, 269.56
+T0, T1 = 245.6, 283.01
 FONT_DIR = "/usr/share/fonts/opentype/inter"
 FONT = "Inter Black"
 SIZE = 0.085            # letter height, as a fraction of the video's height

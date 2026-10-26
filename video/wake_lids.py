@@ -17,16 +17,17 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FPS = 60
-T0, T1 = 245.6, 259.2             # the outro's wake-up (the end credits cut in at 259.2)
+T0, T1 = 245.6, 263.6468          # the outro's wake-up (the end credits cut in at 263.65)
 
 # (song time, openness): eased between keys (smootherstep), so nothing jolts
 LIDS = [
-    (245.6, 0.0), (246.25, 0.0),
-    (246.85, 0.32), (247.3, 0.22),            # a first crack, then they droop
-    (247.55, 0.22), (248.25, 0.62),           # opening properly as the phone comes up
-    (250.4, 0.66), (250.55, 0.02), (250.75, 0.68),   # a slow blink
-    (254.2, 0.7), (254.35, 0.02), (254.55, 0.72),    # another
-    (259.2, 0.72),
+    (245.6, 0.0), (245.95, 0.0),
+    (246.5, 0.32), (246.9, 0.22),             # a first crack, then they droop
+    (247.05, 0.22), (247.7, 0.62),            # opening properly as the phone comes up, in time to read
+                                              # "Good morning, Kevin" (248.3)
+    (253.6, 0.66), (253.75, 0.02), (253.95, 0.68),   # a slow blink (after "...pouring concrete")
+    (258.6, 0.7), (258.75, 0.02), (258.95, 0.72),    # another (after "I will")
+    (263.6468, 0.72),
 ]
 
 
