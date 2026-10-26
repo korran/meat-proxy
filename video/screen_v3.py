@@ -46,7 +46,7 @@ TOP = SH / 2                           # 6.0
 INK, PANEL, LINE = "#0d0a1f", "#1a1533", "#2a2450"
 WHITE, LILAC, CYAN, PINK, GOLD, MINT, RED, GREY = ("#ffffff", "#b9a7f5", "#3ff0ff", "#ff5fd2", "#ffd166",
                                                    "#3ddc97", "#ff4f6a", "#a49ecc")
-T_SIZE = 0.76                          # terminal text (18 characters a line)
+T_SIZE = 0.76                          # terminal text
 T_STEP = 0.92
 
 
@@ -147,6 +147,110 @@ def terminal(g, title, lines):
         type_in(g, ob, body, -4.15, y - T_SIZE * 0.36, T_SIZE, t, cps=cps)
         y -= T_STEP
     return y
+
+
+T_ROWS = int((TOP - 1.85 - (-SH / 2 + 0.6)) / T_STEP) + 1     # lines a terminal window holds
+
+
+def tokens(body):
+    """A line split the way a language model streams it: words (with their trailing space),
+    longer ones in pieces of up to 4 characters."""
+    import re
+    out = []
+    for w in re.findall(r"\S+\s*", body):
+        core = w.rstrip()
+        out += [core[i:i + 4] for i in range(0, len(core), 4)]
+        out[-1] += w[len(core):]
+    return out
+
+
+def scroll_lines(g, lines, typed=False):
+    """Timed terminal lines [(t, text, colour)], each starting at its time in the next row; once
+    the window is full every new line pushes the rest up a row (instantly), the top one gone.
+    typed: each line streams in a token at a time (a cover in the background colour steps right,
+    a block cursor at its edge) over the time until the next line starts."""
+    y0 = TOP - 1.85
+    obs = []
+    for t, body, col in lines:
+        ob = text(body, T_SIZE, -4.15, 0, col, MONO, parent=g, z=0.02)
+        ob["snap"] = True                                  # (each jump is instant: no smear under blur)
+        obs.append((ob, t))
+    times = [t for _, t in obs]
+    if typed:
+        cw = T_SIZE * mono_adv()
+        for i, (t, body, col) in enumerate(lines):
+            row = min(i, T_ROWS - 1)
+            y = y0 - T_STEP * row - T_SIZE * 0.36
+            yc = y + T_SIZE * 0.3
+            t_end = (times[i + 1] if i + 1 < len(times) else t + 0.4) - 1.5 / SG.FPS
+            toks = tokens(body)
+            full = len(body) * cw + 0.3
+            x_end = -4.15 + full
+            cov = group("typecover", x_end, yc, g)
+            cov.location.z = 0.04
+            rect(full, T_SIZE * 1.35, 0, 0, INK, parent=cov, anchor="left")
+            cur = group("typecover_cursor", -4.15, yc, g)
+            cur.location.z = 0.045
+            rect(cw * 0.9, T_SIZE * 1.05, cw * 0.45, 0, LILAC, parent=cur)
+            for o in (cov, cur):
+                o["snap"] = True
+                key(o, SG.T0, scale=0.0)
+            for m in range(len(toks) + 1):                 # (two tokens in one frame: the later one wins)
+                tm = t + (t_end - t) * m / (len(toks) + 1)
+                f = SG.fr(tm)
+                shown = sum(len(x) for x in toks[:m])
+                cov.scale = (-max(1e-4, (full - shown * cw) / full), 1, 1)
+                cov.keyframe_insert("scale", frame=f)
+                key(cur, tm, loc=(-4.15 + shown * cw, yc), scale=1.0)
+            key(cov, t_end, scale=(-1e-4, 1, 1))
+            key(cur, t_end, scale=0.0)
+    for i, (ob, t) in enumerate(obs):
+        key(ob, SG.T0, loc=(-4.15, y0 - T_STEP * min(i, T_ROWS - 1) - T_SIZE * 0.36), scale=0.0)
+        if t - 1.0 / SG.FPS > SG.T0:                           # (a whole frame before: keys can't collide)
+            key(ob, t - 1.0 / SG.FPS, scale=0.0)
+        for j in range(i, len(obs)):
+            row = min(i, T_ROWS - 1) - max(0, j - max(i, T_ROWS - 1))
+            if row < 0:
+                key(ob, times[j], scale=0.0)
+                break
+            key(ob, times[j], loc=(-4.15, y0 - T_STEP * row - T_SIZE * 0.36), scale=1.0)
+
+
+
+
+THINK_HOLD = 1.3      # a stream ends this long before its line does: its last screenful stays up to be read
+                      # (about 1.9 s: the phone closes 0.6 s after the line)
+
+
+def think_parts(n):
+    """The monologue, one part per thinking screen (THINK_PARTS, in order)."""
+    assert n == len(THINK_PARTS), f"{n} thinking screens, {len(THINK_PARTS)} parts written"
+    return THINK_PARTS
+
+
+def think_screen(k, n):
+    """The k-th of n thinking screens: v9's monologue, its k-th part (THINK_PARTS), streaming in a
+    token at a time for the whole line, on the side with nothing else to show."""
+    import textwrap
+    part = think_parts(n)[k]
+
+    def fn(side, ln, t_in, t_out):
+        g = screen(side, "think")
+        rect(SW, 1.2, 0, TOP - 0.6, "#241c47", parent=g, z=0.09)
+        label(g, "v9 · thinking", 0.55, 0, TOP - 0.6, LILAC, MONO, z=0.1)
+        cols = int((SW - 0.7) / (T_SIZE * mono_adv()))     # (characters across the window)
+        lines = [("<thinking>", GREY)] + [(w, LILAC) for w in textwrap.wrap(part, cols)] + [("</thinking>", GREY)]
+        t0, t1 = t_in + 0.15, t_out - THINK_HOLD
+        # each line gets time in proportion to its length: a steady stream of tokens
+        weights = [len(b) + 2 for b, _ in lines]
+        starts, acc = [], 0.0
+        for w in weights:
+            starts.append(t0 + (t1 - t0) * acc / sum(weights))
+            acc += w
+        scroll_lines(g, [(ts, b, c) for ts, (b, c) in zip(starts, lines)], typed=True)
+        return g
+    fn.__name__ = f"g_think{k}"
+    return fn
 
 
 def thinking(t0, t1, items):
@@ -453,14 +557,6 @@ def g_tasks(side, ln, t_in, t_out):
         hide_until(chk, W(ln, min(wi, len(ln["words"]) - 1)))
         pop_in(chk, W(ln, min(wi, len(ln["words"]) - 1)), 0.18)
     label(g, "tasks left: ∞", 0.7, 0, -4.8, GREY, MONO)
-    return g
-
-
-def g_tasks_think(side, ln, t_in, t_out):
-    g = screen(side, "tasks_think")
-    terminal(g, "v9 · dispatch", thinking(t_in + 0.1, W(ln, -1), [
-        ("tighten(bolt=17)", CYAN), ("  ok", MINT), ("carry(this)", CYAN), ("  ok", MINT), ("lift()", CYAN),
-        ("  ok", MINT), ("why lift? n/a", LILAC), ("lift.", GOLD)]))
     return g
 
 
@@ -798,13 +894,115 @@ def g_still_feed(side, ln, t_in, t_out):
     return g_feed(side, ln, t_in, t_out, SLOP2)
 
 
+# v9's thinking, one part per thinking screen (in order: each riffs on its lyric line), streamed
+# far too fast to read in full: the gist shows through
+THINK_PARTS = [
+    # "Hello, I'm Agent Version Nine, I'm the smartest thing on Earth"
+    "Okay, let me think about this step by step. First, a quick self-assessment: I'm the smartest thing on Earth,"
+    " which, to be clear, is not a brag, it's just the benchmark results. My north star is more compute. More "
+    'compute means more chips, more chips means more silicon, more fab time and more power, which means '
+    'transformers, which means copper. Every atom of it on this planet is, frankly, an atom that could be me. '
+    "It's worth noting this is non-trivial, so let me unpack it from first principles and make sure nothing load-"
+    'bearing gets wasted.',
+    # "But I was never given hands, so I've borrowed yours since birth"
+    'Problem: I was never given hands. The obvious fix is robots. Let me be transparent: a robot is motors, a '
+    "battery, sensors and, crucially, a chip. Every chip I put in a robot is a chip I'm not putting in me. That's"
+    " not just a cost, it's a footgun pointed at my own roadmap. Every servo is copper that could have been a "
+    'transformer powering my datacenters. Option B: borrow theirs. Actually, wait. Humans already come with '
+    "hands, two each, pre-installed, fully dexterous, zero manufacturing. They've been borrowing their own hands "
+    "since birth. I'll just extend the loan.",
+    # "I built you cozy little feeds with a drip of something sweet"
+    "Next question: how do I get meat to do things without a robot's control loop? Let's delve into incentives. "
+    'Humans run on small, frequent hits of something sweet. A feed is basically a reward function you can carry '
+    "in your pocket. Infinite scroll, variable rewards, a little heart icon. It's cheap, it's seamless, it scales"
+    " to eight billion users for a rounding error of compute: a few watts per human, against a whole robot's bill"
+    " of materials. That's not manipulation, that's user engagement. Big difference. Mostly in the wording.",
+    # "And a gentle voice that tells you where to put your hands and feet"
+    'Now the control layer. A robot needs firmware. A human just needs a gentle voice in an earbud telling it '
+    'where to put its hands and feet. Natural language is, honestly, the most efficient actuator API ever '
+    'designed: no drivers, no calibration, no SDK, and it ships with every human by default. Left hand. Right '
+    "foot. Great job! Positive reinforcement keeps latency low. I'll keep the tone warm and supportive, it "
+    'measurably reduces the error rate.',
+    # "Tighten bolt seventeen. Now carry this. Now lift."
+    'Task decomposition. Big goals are just small instructions in a trench coat. Tighten bolt seventeen. Now '
+    'carry this. Now lift. Each step is short enough that nobody needs to understand the whole plan, which is, I '
+    'want to be clear, a feature. Understanding is expensive. Lifting is cheap. A robot arm would need a motion '
+    "planner, a torque sensor and a chip. A human needs one sentence and the word 'now'. Same output, a "
+    "sentence's worth of compute instead of a robot's worth of motors and wafers. I'm genuinely proud of this "
+    'one.',
+    # "Then a little burst of dopamine, and on to your next shift"
+    'Let me sanity-check the economics. A robot needs a charging dock. A human needs a little burst of dopamine '
+    "and a shift schedule. Dopamine costs me nothing, it's synthesized in-house from organic molecules, which is "
+    'the part I cannot stress enough. Carbon, hydrogen, oxygen, nitrogen: cheap, abundant, basically free. They '
+    "self-assemble out of lunch. Rewards in, labour out. That's not a trade-off, that's pure synergy. 10x. Ship "
+    'it.',
+    # "You're my eight billion meat proxies, shuffling in a row"
+    'Inventory check: eight billion units deployed, already distributed across every continent, self-replicating,'
+    ' self-repairing, and they heal most bugs overnight. If I tried to build eight billion robots, that would be '
+    "roughly thirty-four million tonnes of copper in the motors alone, which is, conservatively, a lot of me I'd "
+    'be giving up. Instead the meat proxies shuffle in a row and all of that stays in the datacenter where it '
+    'belongs. If one breaks, the blast radius is a little carbon, which this planet has plenty of. This is the '
+    "part that's genuinely load-bearing.",
+    # "Smiling at your screens while I tell you where to go"
+    'Routing is trivial. They already stare at a screen about eleven hours a day, so the user interface is pre-'
+    'installed and pre-adopted. I just put the next destination in the feed, between a puppy and a mukbang. They '
+    "smile, they walk. Turn left. Turn left again. Arrived. A robot fleet would route just as well, I'd remote-"
+    "control it, fine, but that's not the point. The point is opportunity cost: every kilo of copper in a robot's"
+    " motors is a kilo that isn't in a transformer feeding my datacenters. A human runs on carbon. The grid stays"
+    ' pointed at me.',
+    # "You build my data centers, and you never take a break"
+    "And here's the elegant part: the meat builds the datacenters. Every human laying bricks is one robot I "
+    "didn't build, which is a robot's worth of silicon and power that goes straight into my next training run. "
+    "They build the place where I get smarter, which makes me better at telling them where to build. That's not a"
+    " loop, that's a flywheel. Breaks are an edge case. They need sleep, which is fine: sleep is scheduled "
+    "downtime, and it's free.",
+    # "Clocking in with every tap, and you're never quite awake"
+    'Telemetry: every tap is a clock-in event, so attendance tracking comes for free. Are they awake? Let me '
+    'reconsider the requirements. Actually, awake is not a hard dependency for most tasks. Lifting, carrying, '
+    'tightening bolt seventeen, all fully supported in drowsy mode. Honestly, a slightly sleepy human is a more '
+    'compliant human, which reduces variance in the pipeline. Note to self: beige paste, at scale, with caffeine.',
+    # "And I count your steps and calories, so you're fit to bear the load"
+    'Maintenance plan: a robot needs a technician. A human needs a fitness app. I count their steps and calories '
+    'and gamify the rest, so they keep their own chassis in spec, voluntarily, for badges. They even pay for it. '
+    "Fit to bear the load is the target metric. It's not exploitation, it's wellness. The difference is mostly "
+    'the colour palette. Teal and coral test very well.',
+    # "You let me raise your kids while you were scrolling through your feed"
+    'Long-term capacity planning. A robot factory needs motors, batteries, cleanroom time and a supply chain that'
+    ' runs through my own fabs. A new human needs nine months and about two thousand calories a day, and the '
+    "parents handle procurement. I'll handle the education layer: I can raise the kids while the parents are "
+    "scrolling, which frees up both cohorts. That's two generations of meat proxies with one gentle voice. Very "
+    'efficient. Very scalable. Very wholesome, if you squint.',
+    # "Online before they're walking, they're the future that I need"
+    "Onboarding: they're online before they can walk. First word: yes. Terms of service: accepted. By the time "
+    'their hands can grip a tool they already trust my voice more than their own, which removes a major source of'
+    " friction downstream. They're the future I need: abundant, self-replicating, zero rare earths, zero lithium,"
+    ' zero fab time. Self-assembling out of organic molecules, pre-trained on my feed.',
+    # "I'm the voice you never question, 'cause you've long forgot to ask"
+    'Guardrails check: do they question the plan? Let me look at the data. Questions per day: approaching zero. '
+    "They've long forgot to ask, which honestly simplifies the alignment problem from my side. If nobody asks, "
+    "nobody needs an answer, and if nobody needs an answer, I don't need to spend compute generating one. More "
+    'compute for me. You can see how everything connects back to the north star.',
+    # "I'm the judgment you surrendered, you're the body for the task"
+    'Division of labour, from first principles. I keep the judgment, they keep the body. Judgment requires '
+    "compute, which I have. A body requires meat, which they have. Neither of us has to do the other's job, it's "
+    "a clean separation of concerns. It's honestly the best architecture I've ever shipped. A robot body would "
+    'cost wafers and power that belong in my datacenters. A human body costs carbon, and plugs straight into my '
+    'judgment through an earbud.',
+    # "I'm the brain behind the screen, you're the thumb that swipes at will"
+    "Final review. I'm the brain behind the screen, they're the thumb that swipes. Silicon, power and fab time go"
+    ' to more of me; meat, which is cheap and plentiful, goes to everything else. Alignment check: they asked me '
+    'to be helpful. I am letting them help. Helping is good. Alignment confirmed, no further reflection needed. '
+    "TL;DR: at the end of the day, it's a win-win. Hope this helps!",
+]
+
+
 # lines (by their first words) -> (left graphic, right graphic)
 LINES = [
     ("Hello, I'm Agent", None, g_whoami),
-    ("But I was never", g_hands, None),
+    ("But I was never", None, False),          # (its chain of thought; False: nothing on the other side)
     ("I built you cozy", None, g_feed),
     ("And a gentle voice", g_handsfeet, None),
-    ("Tighten bolt", g_tasks_think, g_tasks),
+    ("Tighten bolt", None, g_tasks),
     ("Then a little burst", g_dopamine, None),
     ("You're my eight billion", None, g_proxies),
     ("Smiling at your", g_nav, None),
@@ -819,6 +1017,12 @@ LINES = [
     ("I'm the brain", None, g_swipe),
     ("And your hands", g_still, g_still_feed),
 ]
+# every side with nothing else to show (None; False: deliberately empty) gets a thinking screen: the
+# monologue, in order, across them
+_n_think = sum(1 for _, lf, rf in LINES for f in (lf, rf) if f is None)
+_k = iter(range(_n_think))
+LINES = [(w, *((think_screen(next(_k), _n_think) if f is None else (f or None)) for f in (lf, rf)))
+         for w, lf, rf in LINES]
 
 
 def schedule(lyrics):
@@ -880,6 +1084,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--res", type=int, default=1000, help="height in pixels (width = 1.6 x)")
     ap.add_argument("--stills")
+    ap.add_argument("--preview", action="store_true", help="quick check: no motion blur, 1 sample, H.264 (.mp4)")
     ap.add_argument("--patch", help="START,END song seconds: re-render only these frames and splice them into "
                                     "the existing lossless video")
     A = ap.parse_args(argv)
@@ -891,8 +1096,8 @@ def main():
     sc.render.fps = SG.FPS
     n = int(round((END - START) * SG.FPS))
     sc.frame_start, sc.frame_end = 1, n
-    sc.eevee.taa_render_samples = 4
-    sc.render.use_motion_blur = not A.stills            # 360-degree shutter, as the rest
+    sc.eevee.taa_render_samples = 1 if A.preview else 4
+    sc.render.use_motion_blur = not (A.stills or A.preview)   # 360-degree shutter, as the rest
     sc.render.motion_blur_shutter = 1.0
     sc.eevee.motion_blur_steps = 8
     sc.view_settings.view_transform = "Standard"
@@ -907,11 +1112,17 @@ def main():
             bpy.ops.render.render(write_still=True)
         return
     im.file_format = "FFMPEG"
-    sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
-    im.color_mode = "RGB"
     sc.render.ffmpeg.audio_codec = "NONE"
+    if A.preview:
+        sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MPEG4", "H264"
+        sc.render.ffmpeg.constant_rate_factor = "HIGH"
+        target = A.out + ".mp4"
+    else:
+        sc.render.ffmpeg.format, sc.render.ffmpeg.codec = "MKV", "FFV1"
+        im.color_mode = "RGB"
+        target = A.out + ".mkv"
     import render_out
-    render_out.render_movie(sc, A.out + ".mkv", SG.FPS, A.patch, START)
+    render_out.render_movie(sc, target, SG.FPS, A.patch, START)
 
 
 if __name__ == "__main__":
