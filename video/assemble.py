@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Splice the whole music video from the rendered sections, over the song.
 
-  python3 video/assemble.py [--out video/build/full_song.mp4] [--res 1080] [--list]
+  python3 video/assemble.py [--out video/build/full_song.mov] [--res 1080] [--list]
+
+The output: H.264 (CRF 12); in a .mov the song's own 16-bit PCM (lossless, and YouTube takes it), in an
+.mp4 (quick checks) AAC.
 
 Each section in SECTIONS is a rendered video, the song time its first frame shows, and the stretch
 of the song it covers. A section can have a transparent overlay video laid on top (the news
@@ -72,7 +75,7 @@ def duration(path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=os.path.join(B, "full_song.mp4"))
+    ap.add_argument("--out", default=os.path.join(B, "full_song.mov"))
     ap.add_argument("--res", type=int, default=1080)
     ap.add_argument("--crf", type=int, default=12, help="x264 quality (lower = better, bigger)")
     ap.add_argument("--list", action="store_true", help="just show what would be used")
@@ -146,7 +149,8 @@ def main():
         cmd += ["-i", p]
     cmd += ["-ss", f"{A.start:.4f}", "-i", SONG, "-filter_complex", ";".join(chains), "-map", f"[{cur}]", "-map", f"{len(inputs)}:a",
             "-c:v", "libx264", "-preset", "slow", "-crf", str(A.crf), "-pix_fmt", "yuv420p", "-r", str(FPS),
-            "-c:a", "aac", "-b:a", "320k", "-shortest", "-movflags", "+faststart", A.out]
+            *(["-c:a", "pcm_s16le"] if A.out.endswith(".mov") else ["-c:a", "aac", "-b:a", "320k"]),
+            "-shortest", "-movflags", "+faststart", A.out]
     subprocess.run(cmd, check=True)
     print("->", A.out, f"({duration(A.out):.2f} s; the song is {song_len:.2f} s)")
 
