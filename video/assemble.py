@@ -50,12 +50,13 @@ SECTIONS = [
 ]
 
 
-PREVIEW = False      # --preview: skip the finals (when a section's timing has changed since its final)
+PREVIEW = None       # --preview [T]: skip the finals of the sections from song time T on (their timing has
+                     # changed since)
 
 
-def pick(cands):
+def pick(cands, at=0.0):
     for c in cands or []:
-        if PREVIEW and "_final" in c:
+        if PREVIEW is not None and at >= PREVIEW - 1e-6 and "_final" in c:
             continue
         p = os.path.join(B, c)
         if os.path.exists(p):
@@ -77,7 +78,8 @@ def main():
     ap.add_argument("--list", action="store_true", help="just show what would be used")
     ap.add_argument("--from", dest="start", type=float, default=0.0,
                     help="only the sections from this song time on (e.g. 245.6: the outro), for a quick check")
-    ap.add_argument("--preview", action="store_true", help="use the previews even where there's a final")
+    ap.add_argument("--preview", type=float, nargs="?", const=0.0, metavar="T",
+                    help="use the previews even where there's a final (only from song time T on, if given)")
     A = ap.parse_args()
     global PREVIEW
     PREVIEW = A.preview
@@ -88,8 +90,8 @@ def main():
     secs = [sec for sec in SECTIONS if sec[3] >= A.start - 1e-6]
     for k, (name, cands, f0, s0, s1, layers, fade) in enumerate(secs):
         s1 = song_len if s1 is None else s1
-        src = pick(cands)
-        found = [(mode, pick(c)) for mode, c in layers]
+        src = pick(cands, s0)
+        found = [(mode, pick(c, s0)) for mode, c in layers]
         found = [(mode, p) for mode, p in found if p]
         # with a dissolve, this section starts `fade` early, overlapping the one before
         a = s0 - fade
