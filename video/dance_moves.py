@@ -483,13 +483,13 @@ def v3c3_gestures(W, B):
         return {f"knee{leg}": 0.55 * lift, f"hipf{leg}": 0.3 * lift}
 
     # --- verse 3, line 1: "Hello, I'm Agent Version Nine, I'm the smartest thing on Earth"
-    at("Hello", 164.5, body(lambda t, u: {"hy": 0.2 * osc(t, 1.8), "roll": 0.04 * osc(t, 1.8)}), pre=0.3, hold=0.1)
-    at("Agent", 165.6, body(lambda t, u: {"lean": -0.08, "hx": -0.12}), until="Nine", hold=0.1)
-    at("smartest", 167.2, body(lambda t, u: {"lean": -0.12, "hx": -0.1, "hy": 0.12}), until="thing", hold=0.0)
+    at("Hello", 163.0, body(lambda t, u: {"hy": 0.2 * osc(t, 1.8), "roll": 0.04 * osc(t, 1.8)}), pre=0.3, hold=0.1)
+    at("Agent", 164.8, body(lambda t, u: {"lean": -0.08, "hx": -0.12}), until="Nine", hold=0.1)
+    at("smartest", 166.5, body(lambda t, u: {"lean": -0.12, "hx": -0.1, "hy": 0.12}), until="thing", hold=0.0)
     # line 2: "But I was never given hands, so I've borrowed yours since birth"  (looks for its arms)
     at("never", 169.4, body(lambda t, u: {"hz": 0.45 * math.sin(TAU * smooth(u)), "hx": 0.1}), until="hands",
        hold=0.2, attack=0.3)
-    at("borrowed", 171.6, body(lambda t, u: {"lean": 0.12, "hx": 0.06, "hy": -0.12}), until="birth", hold=0.2)
+    at("borrowed", 170.8, body(lambda t, u: {"lean": 0.12, "hx": 0.06, "hy": -0.12}), until="birth", hold=0.2)
     # line 3: "I built you cozy little feeds with a drip of something sweet"
     at("cozy", 173.8, body(lambda t, u: {"roll": 0.05 * osc(t, 0.45), "hy": 0.16 * osc(t, 0.45)}), until="feeds",
        hold=0.1, attack=0.4)
@@ -498,7 +498,7 @@ def v3c3_gestures(W, B):
     at("gentle", 177.6, body(lambda t, u: {"hy": 0.14, "hz": -0.1}), until="voice", hold=0.1, attack=0.4)
     at("put", 180.0, body(lambda t, u: {**march(t, 1.0), "hx": 0.06}), until="feet", hold=0.1)
     # line 5: "Tighten bolt seventeen. Now carry this. Now lift,"  (a ratchet, a heavy load, a hop)
-    at("Tighten", 182.0, body(lambda t, u: {"hz": 0.14 * (int(B.at(t)[0] * 2) % 4) - 0.2, "hx": 0.08}),
+    at("Tighten", 181.0, body(lambda t, u: {"hz": 0.14 * (int(B.at(t)[0] * 2) % 4) - 0.2, "hx": 0.08}),
        until="seventeen", hold=0.0)
     at("carry", 184.0, body(lambda t, u: {"lean": -0.1, "knee0": 0.3, "knee1": 0.3, "hx": -0.05}), until="this",
        hold=0.0)
@@ -554,7 +554,7 @@ def v3c3_faces(W):
     return [span("smartest", "Earth", 167.0, "smug"),
             span("never", "hands", 169.4, "round"),
             span("drip", "sweet", 175.7, "heart"),
-            span("Tighten", "seventeen", 182.0, "smug"),
+            span("Tighten", "seventeen", 181.0, "smug"),
             span("dopamine", "dopamine", 187.0, "heart"),
             span("eight", "proxies", 191.8, "round"),
             span("quite", "awake", 207.0, "smug"),

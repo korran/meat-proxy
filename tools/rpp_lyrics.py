@@ -35,7 +35,7 @@ MARKER = re.compile(r'^MARKER (\d+) (-?[\d.]+) "(.*?)" (\d+)')
 
 
 def parse(path, lyrics_track, audio_name):
-    words, regions, audio = [], {}, None
+    words, regions, audio, song_end = [], {}, None, 0.0
     tempo, measure_offset = [], 0
     stack, track_name, item = [], None, None
     with open(path, encoding="utf-8") as fh:
@@ -56,6 +56,8 @@ def parse(path, lyrics_track, audio_name):
                         words.append((item["pos"], item["pos"] + item["len"], " ".join(item["notes"])))
                     if audio is None and item["file"] and item["file"].endswith(audio_name):
                         audio = (item["pos"], item["len"])
+                    if item["file"]:      # (the song runs to the end of its last audio item, whichever file)
+                        song_end = max(song_end, item["pos"] + item["len"])
                     item = None
                 continue
             top = stack[-1] if stack else None
@@ -86,6 +88,8 @@ def parse(path, lyrics_track, audio_name):
         if len(regions[k]) >= 2:
             (start, text), (end, _) = regions[k][0], regions[k][1]
             lines.append((start, end, text))
+    if audio:     # time zero is where the song's own item starts; its length, to the song's end
+        audio = (audio[0], max(audio[1], song_end - audio[0]))
     return sorted(words), sorted(lines), audio, sorted(tempo), measure_offset
 
 

@@ -300,18 +300,18 @@
   MARKER 31 148.1064 "" 1
   MARKER 2 143.752648068 "Pause (near-silent break)" 0 0 1 B {6A254B30-7C98-29EF-D749-AD479E0D9DC4} 0 2
   MARKER 3 148.693051582 "Back in after pause" 0 0 1 B {0C97062C-ABC6-1E57-CD83-187127E3006B} 0 2
-  MARKER 32 165.3366 "Hello, I’m Agent Version Nine, I’m the smartest thing on Earth," 1 0 1 B {7160615E-E3EE-1189-90EC-9BA782141319} 0 1
-  MARKER 32 169.2364 "" 1
-  MARKER 33 169.3174 "But I was never given hands, so I’ve borrowed yours since birth," 1 0 1 B {6F2E6E28-93E0-F1F5-926E-37B4C413A8EE} 0 1
-  MARKER 33 173.6982 "" 1
-  MARKER 34 173.7182 "I built you cozy little feeds with a drip of something sweet," 1 0 1 B {F03692A9-CDC8-047D-0F34-177649487DCD} 0 1
-  MARKER 34 177.6789 "" 1
-  MARKER 35 177.959 "And a gentle voice that tells you where to put your hands and feet," 1 0 1 B {9CF226BE-E468-E4E0-22EE-36E57F9D7BA5} 0 1
-  MARKER 35 182.5998 "" 1
-  MARKER 36 182.6198 "“Tighten bolt seventeen. Now carry this. Now lift,”" 1 0 1 B {D2625700-5437-AB35-7E8A-CA9019F14455} 0 1
-  MARKER 36 186.6414 "" 1
-  MARKER 37 186.6806 "Then a little burst of dopamine, and on to your next shift." 1 0 1 B {98A77EB3-CCC0-C736-1034-72FD274F1499} 0 1
-  MARKER 37 191.2714 "" 1
+  MARKER 32 164.1962 "Hello, I’m Agent Version Nine, I’m the smartest thing on Earth," 1 0 1 B {7160615E-E3EE-1189-90EC-9BA782141319} 0 1
+  MARKER 32 168.6860 "" 1
+  MARKER 33 169.3598 "But I was never given hands, so I’ve borrowed yours since birth," 1 0 1 B {6F2E6E28-93E0-F1F5-926E-37B4C413A8EE} 0 1
+  MARKER 33 173.6629 "" 1
+  MARKER 34 173.6829 "I built you cozy little feeds with a drip of something sweet," 1 0 1 B {F03692A9-CDC8-047D-0F34-177649487DCD} 0 1
+  MARKER 34 177.6456 "" 1
+  MARKER 35 178.0059 "And a gentle voice that tells you where to put your hands and feet," 1 0 1 B {9CF226BE-E468-E4E0-22EE-36E57F9D7BA5} 0 1
+  MARKER 35 182.2889 "" 1
+  MARKER 36 182.3089 "“Tighten bolt seventeen. Now carry this. Now lift,”" 1 0 1 B {D2625700-5437-AB35-7E8A-CA9019F14455} 0 1
+  MARKER 36 186.3610 "" 1
+  MARKER 37 186.7520 "Then a little burst of dopamine, and on to your next shift." 1 0 1 B {98A77EB3-CCC0-C736-1034-72FD274F1499} 0 1
+  MARKER 37 191.2560 "" 1
   MARKER 38 192.1216 "You’re my eight billion meat proxies, shuffling in a row," 1 0 1 B {4419E4A0-1960-918A-6CB8-7C374F4F0890} 0 1
   MARKER 38 196.6024 "" 1
   MARKER 39 196.6224 "Smiling at your screens while I tell you where to go," 1 0 1 B {5B2FD7C8-F29C-94F0-B7EA-CE048FAEA11B} 0 1
@@ -6652,9 +6652,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 165.3366
+      POSITION 164.1962
       SNAPOFFS 0
-      LENGTH 0.6402
+      LENGTH 0.4998
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6670,9 +6670,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 165.9768
+      POSITION 165.3971
       SNAPOFFS 0
-      LENGTH 0.28
+      LENGTH 0.3002
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6688,9 +6688,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 166.2568
+      POSITION 165.6973
       SNAPOFFS 0
-      LENGTH 0.4201
+      LENGTH 0.4203
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6706,9 +6706,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 166.6769
+      POSITION 166.1176
       SNAPOFFS 0
-      LENGTH 0.4201
+      LENGTH 0.4003
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6724,9 +6724,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 167.097
+      POSITION 166.5178
       SNAPOFFS 0
-      LENGTH 0.46
+      LENGTH 0.7405
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6742,9 +6742,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 167.557
+      POSITION 167.2584
       SNAPOFFS 0
-      LENGTH 0.1201
+      LENGTH 0.1001
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6760,9 +6760,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 167.6771
+      POSITION 167.3584
       SNAPOFFS 0
-      LENGTH 0.18
+      LENGTH 0.1801
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6778,9 +6778,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 167.8571
+      POSITION 167.5386
       SNAPOFFS 0
-      LENGTH 0.5001
+      LENGTH 0.5404
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6796,9 +6796,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 168.3572
+      POSITION 168.0789
       SNAPOFFS 0
-      LENGTH 0.22
+      LENGTH 0.2001
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6814,9 +6814,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 168.5772
+      POSITION 168.2791
       SNAPOFFS 0
-      LENGTH 0.1601
+      LENGTH 0.1401
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6832,9 +6832,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 168.7373
+      POSITION 168.4192
       SNAPOFFS 0
-      LENGTH 0.4991
+      LENGTH 0.2668
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6850,9 +6850,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 169.3174
+      POSITION 169.3598
       SNAPOFFS 0
-      LENGTH 0.26
+      LENGTH 0.2202
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6868,9 +6868,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 169.5774
+      POSITION 169.5800
       SNAPOFFS 0
-      LENGTH 0.06
+      LENGTH 0.0600
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6886,9 +6886,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 169.6374
+      POSITION 169.6200
       SNAPOFFS 0
-      LENGTH 0.3401
+      LENGTH 0.3402
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6904,9 +6904,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 169.9775
+      POSITION 169.9603
       SNAPOFFS 0
-      LENGTH 0.4401
+      LENGTH 0.3202
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6922,9 +6922,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 170.4176
+      POSITION 170.2805
       SNAPOFFS 0
-      LENGTH 0.4
+      LENGTH 0.3803
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6940,9 +6940,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 170.8176
+      POSITION 170.6607
       SNAPOFFS 0
-      LENGTH 0.8002
+      LENGTH 0.6805
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6958,9 +6958,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 171.6178
+      POSITION 171.3412
       SNAPOFFS 0
-      LENGTH 0.3001
+      LENGTH 0.3002
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6976,9 +6976,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 171.9179
+      POSITION 171.6414
       SNAPOFFS 0
-      LENGTH 0.26
+      LENGTH 0.1401
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -6994,9 +6994,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 172.1779
+      POSITION 171.7815
       SNAPOFFS 0
-      LENGTH 0.4001
+      LENGTH 0.4203
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7012,9 +7012,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 172.578
+      POSITION 172.2018
       SNAPOFFS 0
-      LENGTH 0.36
+      LENGTH 0.5004
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7030,9 +7030,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 172.938
+      POSITION 172.7022
       SNAPOFFS 0
-      LENGTH 0.3201
+      LENGTH 0.3202
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7048,9 +7048,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 173.2581
+      POSITION 173.0224
       SNAPOFFS 0
-      LENGTH 0.4401
+      LENGTH 0.6405
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7066,9 +7066,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 173.7182
+      POSITION 173.6829
       SNAPOFFS 0
-      LENGTH 0.1
+      LENGTH 0.1401
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7084,9 +7084,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 173.8182
+      POSITION 173.8230
       SNAPOFFS 0
-      LENGTH 0.3001
+      LENGTH 0.3202
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7102,9 +7102,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 174.1183
+      POSITION 174.1432
       SNAPOFFS 0
-      LENGTH 0.22
+      LENGTH 0.2001
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7120,9 +7120,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 174.3383
+      POSITION 174.3433
       SNAPOFFS 0
-      LENGTH 0.5801
+      LENGTH 0.5604
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7138,9 +7138,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 174.9184
+      POSITION 174.9037
       SNAPOFFS 0
-      LENGTH 0.2801
+      LENGTH 0.2802
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7156,9 +7156,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 175.1985
+      POSITION 175.1839
       SNAPOFFS 0
-      LENGTH 0.5401
+      LENGTH 0.5804
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7174,9 +7174,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 175.7386
+      POSITION 175.7643
       SNAPOFFS 0
-      LENGTH 0.18
+      LENGTH 0.1601
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7192,9 +7192,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 175.9186
+      POSITION 175.9244
       SNAPOFFS 0
-      LENGTH 0.3601
+      LENGTH 0.3803
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7210,9 +7210,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 176.2787
+      POSITION 176.3047
       SNAPOFFS 0
-      LENGTH 0.34
+      LENGTH 0.4403
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7228,9 +7228,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 176.6187
+      POSITION 176.7450
       SNAPOFFS 0
-      LENGTH 0.2001
+      LENGTH 0.1001
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7246,9 +7246,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 176.8188
+      POSITION 176.8451
       SNAPOFFS 0
-      LENGTH 0.5201
+      LENGTH 0.5004
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7264,9 +7264,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 177.3389
+      POSITION 177.3454
       SNAPOFFS 0
-      LENGTH 0.34
+      LENGTH 0.3002
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7282,9 +7282,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 177.959
+      POSITION 178.0059
       SNAPOFFS 0
-      LENGTH 0.14
+      LENGTH 0.1401
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7300,9 +7300,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 178.099
+      POSITION 178.1460
       SNAPOFFS 0
-      LENGTH 0.3801
+      LENGTH 0.3603
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7318,9 +7318,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 178.4791
+      POSITION 178.5063
       SNAPOFFS 0
-      LENGTH 0.5201
+      LENGTH 0.5404
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7336,9 +7336,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 178.9992
+      POSITION 179.0466
       SNAPOFFS 0
-      LENGTH 0.5401
+      LENGTH 0.5804
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7354,9 +7354,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 179.5393
+      POSITION 179.6270
       SNAPOFFS 0
-      LENGTH 0.26
+      LENGTH 0.2402
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7372,9 +7372,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 179.7993
+      POSITION 179.8672
       SNAPOFFS 0
-      LENGTH 0.3601
+      LENGTH 0.3603
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7390,9 +7390,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 180.1594
+      POSITION 180.2275
       SNAPOFFS 0
-      LENGTH 0.22
+      LENGTH 0.2001
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7408,9 +7408,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 180.3794
+      POSITION 180.4276
       SNAPOFFS 0
-      LENGTH 0.2601
+      LENGTH 0.3202
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7426,9 +7426,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 180.6395
+      POSITION 180.7478
       SNAPOFFS 0
-      LENGTH 0.16
+      LENGTH 0.1001
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7444,9 +7444,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 180.7995
+      POSITION 180.8479
       SNAPOFFS 0
-      LENGTH 0.3801
+      LENGTH 0.2802
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7462,9 +7462,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 181.1796
+      POSITION 181.1281
       SNAPOFFS 0
-      LENGTH 0.24
+      LENGTH 0.3603
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7480,9 +7480,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 181.4196
+      POSITION 181.4883
       SNAPOFFS 0
-      LENGTH 0.3801
+      LENGTH 0.3803
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7498,9 +7498,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 181.7997
+      POSITION 181.8686
       SNAPOFFS 0
-      LENGTH 0.16
+      LENGTH 0.1801
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7516,9 +7516,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 181.9597
+      POSITION 182.0487
       SNAPOFFS 0
-      LENGTH 0.6401
+      LENGTH 0.2402
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7534,9 +7534,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 182.6198
+      POSITION 182.3089
       SNAPOFFS 0
-      LENGTH 0.3601
+      LENGTH 0.7405
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7552,9 +7552,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 182.9799
+      POSITION 183.0494
       SNAPOFFS 0
-      LENGTH 0.6601
+      LENGTH 0.6404
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7570,9 +7570,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 183.64
+      POSITION 183.6899
       SNAPOFFS 0
-      LENGTH 0.8402
+      LENGTH 0.8406
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7588,9 +7588,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 184.4802
+      POSITION 184.5305
       SNAPOFFS 0
-      LENGTH 0.24
+      LENGTH 0.2602
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7606,9 +7606,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 184.7202
+      POSITION 184.7907
       SNAPOFFS 0
-      LENGTH 0.3401
+      LENGTH 0.3202
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7624,9 +7624,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 185.0603
+      POSITION 185.1109
       SNAPOFFS 0
-      LENGTH 0.5001
+      LENGTH 0.5604
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7642,9 +7642,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 185.5604
+      POSITION 185.6713
       SNAPOFFS 0
-      LENGTH 0.28
+      LENGTH 0.2602
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7660,9 +7660,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 185.8404
+      POSITION 185.9315
       SNAPOFFS 0
-      LENGTH 0.801
+      LENGTH 0.4295
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7678,9 +7678,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 186.6806
+      POSITION 186.7520
       SNAPOFFS 0
-      LENGTH 0.16
+      LENGTH 0.1801
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7696,9 +7696,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 186.8406
+      POSITION 186.9322
       SNAPOFFS 0
-      LENGTH 0.1
+      LENGTH 0.0801
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7714,9 +7714,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 186.9406
+      POSITION 187.0122
       SNAPOFFS 0
-      LENGTH 0.5401
+      LENGTH 0.5404
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7732,9 +7732,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 187.4807
+      POSITION 187.5526
       SNAPOFFS 0
-      LENGTH 0.4601
+      LENGTH 0.4803
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7750,9 +7750,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 187.9408
+      POSITION 188.0329
       SNAPOFFS 0
-      LENGTH 0.1
+      LENGTH 0.0801
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7768,9 +7768,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 188.0408
+      POSITION 188.1130
       SNAPOFFS 0
-      LENGTH 0.8402
+      LENGTH 0.9807
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7786,9 +7786,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 188.881
+      POSITION 189.0937
       SNAPOFFS 0
-      LENGTH 0.2
+      LENGTH 0.2202
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7804,9 +7804,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 189.081
+      POSITION 189.3138
       SNAPOFFS 0
-      LENGTH 0.6654
+      LENGTH 0.6805
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7822,9 +7822,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 189.9412
+      POSITION 189.9943
       SNAPOFFS 0
-      LENGTH 0.14
+      LENGTH 0.1601
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7840,9 +7840,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 190.0812
+      POSITION 190.1544
       SNAPOFFS 0
-      LENGTH 0.2401
+      LENGTH 0.2202
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7858,9 +7858,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 190.3213
+      POSITION 190.3746
       SNAPOFFS 0
-      LENGTH 0.42
+      LENGTH 0.4603
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -7876,9 +7876,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 190.7413
+      POSITION 190.8349
       SNAPOFFS 0
-      LENGTH 0.5301
+      LENGTH 0.4211
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -8274,7 +8274,7 @@
     <ITEM
       POSITION 200.8232
       SNAPOFFS 0
-      LENGTH 0.2801
+      LENGTH 0.2732
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -8290,9 +8290,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 201.1033
+      POSITION 201.0964
       SNAPOFFS 0
-      LENGTH 1.0602
+      LENGTH 0.2200
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -8308,9 +8308,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 202.1635
+      POSITION 201.3164
       SNAPOFFS 0
-      LENGTH 0.04
+      LENGTH 0.6000
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -8326,9 +8326,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 202.2035
+      POSITION 201.9164
       SNAPOFFS 0
-      LENGTH 0.5201
+      LENGTH 0.6800
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -8344,9 +8344,9 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 202.7236
+      POSITION 202.5964
       SNAPOFFS 0
-      LENGTH 0.6201
+      LENGTH 0.7473
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -8364,7 +8364,7 @@
     <ITEM
       POSITION 203.3437
       SNAPOFFS 0
-      LENGTH 0.26
+      LENGTH 0.2600
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -8418,7 +8418,7 @@
     <ITEM
       POSITION 204.3439
       SNAPOFFS 0
-      LENGTH 0.36
+      LENGTH 0.3600
       LOOP 1
       ALLTAKES 0
       FADEIN 1 0.01 0 1 0 0 0
@@ -8452,7 +8452,7 @@
       IMGRESOURCEFLAGS 8
     >
     <ITEM
-      POSITION 204.784
+      POSITION 204.7840
       SNAPOFFS 0
       LENGTH 0.6001
       LOOP 1
@@ -10863,6 +10863,28 @@
     PERF 0
     MIDIOUT -1
     MAINSEND 1 0
+    <ITEM
+      POSITION 164.09533312873813
+      SNAPOFFS 0
+      LENGTH 0.85
+      LOOP 0
+      ALLTAKES 0
+      FADEIN 1 0 0 1 0 0 0
+      FADEOUT 1 0 0 1 0 0 0
+      MUTE 0 0
+      SEL 0
+      IGUID {B3E2B0CF-CFBA-4336-97F7-EFF1D3AAE0EA}
+      IID 570
+      NAME "we_need_a_meat_proxy_alt_rendition_hello_vocals.wav"
+      VOLPAN 1 0 1 -1
+      SOFFS 0
+      PLAYRATE 1 1 0 -1 0 0.0025
+      CHANMODE 0
+      GUID {787E05CC-3D7C-46C0-A6CA-543E5224D14C}
+      <SOURCE WAVE
+        FILE "we_need_a_meat_proxy_alt_rendition_hello_vocals.wav"
+      >
+    >
     <ITEM
       POSITION 164.89578985494248
       SNAPOFFS 0
