@@ -195,6 +195,7 @@ def main():
     LS.setup_look(sc, FPS, n, res, 32, 4, 1.0, A.preview, on_set=(0.0, DANCE_Y, 0.0))
     sc.render.motion_blur_position = "START"
     sc.eevee.use_raytracing = sc.eevee.use_fast_gi = not A.preview
+    YS.shadow_budget(sc)     # (at 1440p the yacht's shadow maps overflow EEVEE's pool otherwise: flickering shadows)
     os.makedirs(A.out, exist_ok=True)
     split = A.layer or not A.preview
     A.layer = A.layer or "main"
