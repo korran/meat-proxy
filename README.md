@@ -4,6 +4,8 @@ A music video made entirely in code: toy-brick sets and minifig characters rende
 with the graphics on the screens inside the sets generated the same way. What each shot shows is
 in [video/SHOTLIST.md](video/SHOTLIST.md).
 
+**Watch it on YouTube:** https://www.youtube.com/watch?v=kQyxcaBmYEk
+
 ## Requirements
 
 - **Blender 4.3** (`blender` on the `PATH`, or `make BLENDER=/path/to/blender`), with a GPU for EEVEE
